@@ -39,10 +39,12 @@ namespace Block.Setup
         readonly string _repoRoot;
         readonly string _configurePs1;
         readonly string _assets;
+        readonly string _productVersion;
         Image _lockup;
         Image _titleIcon;
         int _step;
         bool _agree = true;
+        string _installedViewerDir;
         readonly ListView _viewers;
         readonly ListView _addons;
         readonly TextBox _log;
@@ -63,6 +65,7 @@ namespace Block.Setup
         public WizardForm()
         {
             _repoRoot = FindRepoRoot();
+            _productVersion = ReadProductVersion(_repoRoot);
             _configurePs1 = Path.Combine(_repoRoot, "tools", "configure_gshade_support.ps1");
             _assets = Path.Combine(_repoRoot, "tools", "setup", "Assets");
             if (!Directory.Exists(_assets))
@@ -136,7 +139,7 @@ namespace Block.Setup
             side.Controls.Add(_stepNav);
             side.Controls.Add(new Label
             {
-                Text = "v0.3.2 · x64", ForeColor = Brand.InkMuted, Font = new Font("Consolas", 8.5f),
+                Text = "v" + _productVersion + " · x64", ForeColor = Brand.InkMuted, Font = new Font("Consolas", 8.5f),
                 Location = new Point(20, 380), AutoSize = true
             });
             body.Controls.Add(side);
@@ -216,7 +219,7 @@ namespace Block.Setup
                 e.Graphics.DrawRectangle(new Pen(Brand.Line), 0, 0, card.Width - 1, card.Height - 1);
             };
             card.Controls.Add(Bullet(10, 14, "Firestorm, Alchemy, Black Dragon, Cool VL, Singularity…"));
-            card.Controls.Add(Bullet(10, 42, "GShade / Heard presets + OpenGL-safe addons"));
+            card.Controls.Add(Bullet(10, 42, "GShade presets + OpenGL-safe addons"));
             card.Controls.Add(Bullet(10, 70, "Overlay hotkey: Shift+B"));
             p.Controls.Add(card);
             var agree = new CheckBox
@@ -373,10 +376,73 @@ namespace Block.Setup
             });
             p.Controls.Add(new Label
             {
-                Text = "OpenGL viewers (Firestorm, Alchemy, Black Dragon, …): launch normally, Shift+B. Aurora (Vulkan): use \"Launch Aurora with Block.bat\" — bare .exe will not load Block.",
-                Location = new Point(0, 128), Size = new Size(500, 90), ForeColor = Brand.InkMuted, Font = new Font("Segoe UI", 10f)
+                Text = "1. Launch your OpenGL viewer (Firestorm, Alchemy, Black Dragon, …).\r\n2. In-world, press Shift+B to open the Block overlay.\r\n3. Browse your GShade presets and toggle techniques.\r\n\r\nAurora (Vulkan): use \"Launch Aurora with Block.bat\" — bare .exe will not load Block.",
+                Location = new Point(0, 120), Size = new Size(500, 120), ForeColor = Brand.InkMuted, Font = new Font("Segoe UI", 10f)
             });
+            var launch = MakeBtn("Launch viewer", true);
+            launch.Location = new Point(0, 260);
+            launch.Size = new Size(160, 36);
+            launch.Click += (s, e) => TryLaunchInstalledViewer();
+            p.Controls.Add(launch);
             return p;
+        }
+
+        void TryLaunchInstalledViewer()
+        {
+            try
+            {
+                var dir = _installedViewerDir;
+                if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+                {
+                    foreach (ListViewItem item in _viewers.CheckedItems)
+                    {
+                        dir = item.Tag as string ?? item.Text;
+                        if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                            break;
+                    }
+                }
+                if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+                {
+                    MessageBox.Show(this, "No installed viewer folder found. Launch Firestorm yourself, then press Shift+B.", "Block Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                var exe = Directory.GetFiles(dir, "Firestorm*.exe").FirstOrDefault()
+                    ?? Directory.GetFiles(dir, "*.exe").FirstOrDefault(f =>
+                    {
+                        var n = Path.GetFileName(f);
+                        return n.IndexOf("Firestorm", StringComparison.OrdinalIgnoreCase) >= 0
+                            || n.IndexOf("Alchemy", StringComparison.OrdinalIgnoreCase) >= 0
+                            || n.IndexOf("SecondLife", StringComparison.OrdinalIgnoreCase) >= 0
+                            || n.IndexOf("BlackDragon", StringComparison.OrdinalIgnoreCase) >= 0;
+                    });
+                if (exe == null)
+                {
+                    MessageBox.Show(this, "Could not find a viewer .exe in:\n" + dir + "\n\nLaunch it manually, then press Shift+B.", "Block Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                Process.Start(new ProcessStartInfo { FileName = exe, WorkingDirectory = dir, UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Could not launch viewer:\n" + ex.Message, "Block Setup", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        static string ReadProductVersion(string repoRoot)
+        {
+            try
+            {
+                var path = Path.Combine(repoRoot, "VERSION");
+                if (File.Exists(path))
+                {
+                    var v = File.ReadAllText(path).Trim();
+                    if (!string.IsNullOrEmpty(v))
+                        return v;
+                }
+            }
+            catch { }
+            return "0.3.2";
         }
 
         void ShowStep(int step)
@@ -682,6 +748,7 @@ namespace Block.Setup
                 {
                     var path = j.Viewers[i];
                     worker.ReportProgress((i * 100) / j.Viewers.Count, "Installing " + Path.GetFileName(path));
+                    _installedViewerDir = path;
                     foreach (var line in Install(path, j.Addons))
                         worker.ReportProgress(-1, line);
                     worker.ReportProgress(((i + 1) * 100) / j.Viewers.Count, "Installed " + Path.GetFileName(path));

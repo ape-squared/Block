@@ -17,7 +17,7 @@
 #include "fonts/inter_regular.hpp"
 #include "fonts/meslo_lgs_regular.hpp"
 
-vkShade::GuiManager::GuiManager(VulkanDevice deviceContext, VkFormat swapchainFormat)
+vkShade::GuiManager::GuiManager(VulkanDevice& deviceContext, VkFormat swapchainFormat)
 {
     m_device = deviceContext.handle;
 

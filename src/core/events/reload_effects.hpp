@@ -1,6 +1,12 @@
 #pragma once
 
+#include <string>
+
 namespace vkShade::Events
 {
-    struct ReloadEffects { /* No data required */ };
+    // Empty effect name reloads all effects; otherwise only the named file.
+    struct ReloadEffects
+    {
+        std::string effect;
+    };
 } // namespace vkShade::Events

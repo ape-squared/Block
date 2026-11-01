@@ -1,57 +1,59 @@
 # Configuration
 
-The `vkShade.ini` configuration file is searched for in the following
+The `Block.ini` configuration file is searched for in the following
  locations, in order of precedence:
 
 - A file set with the environment variable
-  `VKSHADE_CONFIG_FILE=/path/to/vkShade.ini`
-- A file named `vkShade.ini` in the working directory of the game
-- `$XDG_CONFIG_HOME/vkShade/vkShade.ini` or `~/.config/vkShade/vkShade.ini`
-- `$XDG_DATA_HOME/vkShade/vkShade.ini` or `~/.local/share/vkShade/vkShade.ini`
-- `/etc/vkShade.ini`
-- `/etc/vkShade/vkShade.ini`
-- `/usr/share/vkShade/vkShade.ini`
+  `BLOCK_CONFIG_FILE=/path/to/Block.ini` (also accepts legacy `VKSHADE_CONFIG_FILE`)
+- A file named `Block.ini` (or legacy `vkShade.ini`) in the working directory of the game
+- Platform config/data directories under `Block` / `vkShade`
 
 !!! TIP
-    The default/example configuration file can be found in this repo at
-    `config/vkShade.ini` and will be installed at either
-    `$XDG_DATA_HOME/vkShade/vkShade.ini` for a user-level installation or at
-    `/usr/share/vkShade/vkShade.ini` for a system-wide installation.
+    The default/example configuration file is `config/Block.ini`.
 
 ## ReShade FX
 
-To use ReShade effects, you need to configure the search paths in
- `vkShade.ini`. For example:
-
-```ini title="vkShade.ini"
+```ini title="Block.ini"
 [ReShade]
-EffectSearchPaths = /opt/reshade/shaders,/opt/reshade/shaders/SweetFX
-TextureSearchPaths = /opt/reshade/textures,/opt/reshade/textures/SweetFX
+EffectSearchPaths = shaders,effects
+TextureSearchPaths = textures
+PreprocessorDefinitions = RESHADE_DEPTH_INPUT_IS_REVERSED=1
 ```
 
 ## Input
 
-Keybinds are now configurable under the `[Input]` section in `vkShade.ini`
- (single keys only for now). You can set custom keybinds by using the
- action name and the enum name of the key (`src/input/key_codes.hpp`):
-
-```ini title="vkShade.ini"
+```ini title="Block.ini"
 [Input]
 ToggleEffects = KEY_INSERT
-ToggleGui = KEY_B
+ToggleGui = Shift+KEY_B
+# 0 = passthrough, 1 = block when ImGui wants capture, 2 = block while overlay open
+InputProcessing = 1
 ```
 
-!!! TIP
-    If you don't set any keybinds, Block will use the defaults:
+Bindings accept `Ctrl+`, `Alt+`, and `Shift+` modifiers.
 
-    - `INSERT` to toggle the effects
-    - `Shift+B` to toggle the in-game GUI overlay (OpenGL and Vulkan)
+## HDR
+
+```ini title="Block.ini"
+[HDR]
+ForceHDR = 0
+Mode = scrgb
+PaperWhiteNits = 203
+```
+
+When `ForceHDR=1`, the layer requests an HDR swapchain format/color-space pair
+(`scrgb` → `R16G16B16A16_SFLOAT` + `EXTENDED_SRGB_LINEAR_EXT`, or `hdr10`).
+If the surface rejects the pair, the app format is kept.
+
+## Depth
+
+```ini title="Block.ini"
+[Depth]
+UseAspectRatioHeuristics = 1
+DrawStatsHeuristic = 1
+```
 
 ## Log Output
 
-The log output level can be set with the `VKSHADE_LOG_LEVEL` environment var,
- e.g. `VKSHADE_LOG_LEVEL=debug`. Possible values are:
- `trace`, `debug`, `info`, `warn`, `error`, `critical`, and `off`.
-
-By default the logger outputs to stderr, a file can be set as the output using
- the `VKSHADE_LOG_FILE` env var, e.g. `VKSHADE_LOG_FILE="vkShade.log"`.
+Use `BLOCK_LOG_LEVEL` / legacy `VKSHADE_LOG_LEVEL` (`trace`…`off`) and
+`BLOCK_LOG_FILE` / `VKSHADE_LOG_FILE` for file output.

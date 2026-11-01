@@ -9,6 +9,8 @@
 #include <vulkan/utility/vk_dispatch_table.h>
 #include <vulkan/vulkan_core.h>
 
+#include "runtime/depth_tracker.hpp"
+
 #undef VK_LAYER_EXPORT
 #if defined(_WIN32)
 #define VK_LAYER_EXPORT __declspec(dllexport)
@@ -38,6 +40,10 @@ struct VulkanDevice
     VkQueue       queue;
     uint32_t      queueFamilyIndex;
     VkCommandPool commandPool;
+
+    // Depth buffer tracking. Created once the device is registered, destroyed in DestroyDevice.
+    // (Makes VulkanDevice move-only.)
+    std::unique_ptr<vkShade::DepthTracker> depthTracker;
 };
 
 inline void* const dispatch_key_from_handle(const void* handle)
@@ -97,3 +103,24 @@ VK_LAYER_EXPORT VkResult VKAPI_CALL vkShade_QueuePresentKHR(VkQueue queue, const
 VK_LAYER_EXPORT VkResult VKAPI_CALL vkShade_AllocateCommandBuffers(VkDevice                           device,
                                                                    const VkCommandBufferAllocateInfo* pAllocateInfo,
                                                                    VkCommandBuffer*                   pCommandBuffers);
+
+// Depth buffer tracking (hooks_depth.cpp)
+VK_LAYER_EXPORT VkResult VKAPI_CALL vkShade_CreateImage(VkDevice device, const VkImageCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkImage* pImage);
+VK_LAYER_EXPORT void     VKAPI_CALL vkShade_DestroyImage(VkDevice device, VkImage image, const VkAllocationCallbacks* pAllocator);
+VK_LAYER_EXPORT VkResult VKAPI_CALL vkShade_CreateImageView(VkDevice device, const VkImageViewCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkImageView* pView);
+VK_LAYER_EXPORT void     VKAPI_CALL vkShade_DestroyImageView(VkDevice device, VkImageView imageView, const VkAllocationCallbacks* pAllocator);
+
+VK_LAYER_EXPORT void VKAPI_CALL vkShade_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo* pRenderingInfo);
+VK_LAYER_EXPORT void VKAPI_CALL vkShade_CmdEndRendering(VkCommandBuffer commandBuffer);
+
+VK_LAYER_EXPORT void VKAPI_CALL vkShade_CmdDraw(VkCommandBuffer commandBuffer, uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance);
+VK_LAYER_EXPORT void VKAPI_CALL vkShade_CmdDrawIndexed(VkCommandBuffer commandBuffer, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance);
+VK_LAYER_EXPORT void VKAPI_CALL vkShade_CmdDrawIndirect(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset, uint32_t drawCount, uint32_t stride);
+VK_LAYER_EXPORT void VKAPI_CALL vkShade_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset, uint32_t drawCount, uint32_t stride);
+
+VK_LAYER_EXPORT void VKAPI_CALL vkShade_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout imageLayout, const VkClearDepthStencilValue* pDepthStencil, uint32_t rangeCount, const VkImageSubresourceRange* pRanges);
+VK_LAYER_EXPORT void VKAPI_CALL vkShade_CmdClearAttachments(VkCommandBuffer commandBuffer, uint32_t attachmentCount, const VkClearAttachment* pAttachments, uint32_t rectCount, const VkClearRect* pRects);
+
+VK_LAYER_EXPORT VkResult VKAPI_CALL vkShade_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBeginInfo* pBeginInfo);
+VK_LAYER_EXPORT VkResult VKAPI_CALL vkShade_QueueSubmit(VkQueue queue, uint32_t submitCount, const VkSubmitInfo* pSubmits, VkFence fence);
+VK_LAYER_EXPORT VkResult VKAPI_CALL vkShade_QueueSubmit2(VkQueue queue, uint32_t submitCount, const VkSubmitInfo2* pSubmits, VkFence fence);

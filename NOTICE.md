@@ -16,7 +16,7 @@ Full licence texts and additional dependency notes: [THIRD_PARTY_LICENSES.md](TH
 
 ## Shader packs and presets
 
-GShade / community shaders and Heard-style presets are **not** Block's authorship. Setup can wire folders the user already has (`gshade-shaders`, `gshade-presets`). Restricted assets are not shipped by default — see `payload/reshade-shaders` and any `CREDITS.txt` next to packs you install.
+GShade / community shaders and presets are **not** Block's authorship. Setup can wire folders the user already has (`gshade-shaders`, `gshade-presets`). Restricted assets are not shipped by default — see `payload/reshade-shaders` and any `CREDITS.txt` next to packs you install.
 
 ## Brand
 

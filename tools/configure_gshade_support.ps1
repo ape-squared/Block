@@ -1,5 +1,5 @@
 ﻿# Wire Block OpenGL injector to GShade shaders/presets/addons for a viewer folder.
-# - Extracts gshade-presets\*.zip only when the pack folder is missing/empty (never wipe existing Heard).
+# - Extracts gshade-presets\*.zip only when the pack folder is missing/empty (never wipe existing packs).
 # - Prefers the viewer's existing GShade.ini / ReShade.ini PresetPath (so active presets are not reset to Off).
 # Usage:
 #   .\configure_gshade_support.ps1 -ViewerDir "C:\Program Files\Firestorm-Releasex64"
@@ -75,13 +75,13 @@ foreach ($cfg in @((Join-Path $ViewerDir "ReShade.ini"), (Join-Path $ViewerDir "
   }
 }
 
-# 2) Fallbacks — prefer a non-Off Heard preset if available
+# 2) Fallbacks — prefer a non-Off preset from the common GShade pack folder if available
 if (-not $preferredPreset) {
-  $heardDir = Join-Path $presetsRoot "Heard"
+  $packDir = Join-Path $presetsRoot "Heard"
   $candidates = @(
-    (Join-Path $heardDir "FINAL.ini"),
-    (Join-Path $heardDir "VET_Graphics_3.ini"),
-    (Join-Path $heardDir "Off.ini"),
+    (Join-Path $packDir "FINAL.ini"),
+    (Join-Path $packDir "VET_Graphics_3.ini"),
+    (Join-Path $packDir "Off.ini"),
     (Join-Path $presetsRoot "Off.ini"),
     (Join-Path $presetsRoot "GShade\Off.ini")
   )
@@ -305,13 +305,11 @@ if ((Test-Path $blockCache) -and ($cacheRoot -eq $blockCache)) {
   Write-Host "Cleared Block effect cache: $blockCache"
 }
 
-$heardCount = @(Get-ChildItem (Join-Path $presetsRoot "Heard") -Filter "*.ini" -ErrorAction SilentlyContinue).Count
 $presetCount = @(Get-ChildItem $presetsRoot -Recurse -Filter "*.ini" -ErrorAction SilentlyContinue).Count
 $addonCount = @(Get-ChildItem $addonsRoot -File -ErrorAction SilentlyContinue | Where-Object { $_.Extension -match '^\.addon' }).Count
 
 Write-Host "Configured: $ViewerDir"
 Write-Host "  PresetPath -> $preferredPreset"
-Write-Host "  Heard presets: $heardCount"
 Write-Host "  Presets total: $presetCount under $presetsRoot"
 Write-Host "  AddonPath  -> $addonsRoot ($addonCount addon file(s))"
 Write-Host "  Look       -> GShade parity (PerformanceMode=0, SkipLoading=0, UseDithering=1, DEPTH, ShowFXCost)"

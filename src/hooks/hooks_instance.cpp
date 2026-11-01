@@ -1,5 +1,8 @@
 #include "hooks.hpp"
 
+#include <cstring>
+#include <vector>
+
 #include <magic_enum/magic_enum.hpp>
 #include <vulkan/vk_layer.h>
 
@@ -60,6 +63,44 @@ VK_LAYER_EXPORT VkResult VKAPI_CALL vkShade_CreateInstance(
     // Create modified create info with our app info
     VkInstanceCreateInfo modifiedCreateInfo = *pCreateInfo;
     modifiedCreateInfo.pApplicationInfo = &appInfo;
+
+    // Enable VK_EXT_swapchain_colorspace when available (forced HDR / color spaces).
+    std::vector<const char*> enabledExtensions;
+    for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; ++i)
+        enabledExtensions.push_back(pCreateInfo->ppEnabledExtensionNames[i]);
+
+    uint32_t extCount = 0;
+    if (auto enumerate = reinterpret_cast<PFN_vkEnumerateInstanceExtensionProperties>(
+            gpa(VK_NULL_HANDLE, "vkEnumerateInstanceExtensionProperties")))
+    {
+        enumerate(nullptr, &extCount, nullptr);
+        std::vector<VkExtensionProperties> available(extCount);
+        if (extCount > 0)
+            enumerate(nullptr, &extCount, available.data());
+
+        const char* colorspaceExt = VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME;
+        bool already = false;
+        for (const char* name : enabledExtensions)
+        {
+            if (name && strcmp(name, colorspaceExt) == 0)
+                already = true;
+        }
+        if (!already)
+        {
+            for (const auto& ext : available)
+            {
+                if (strcmp(ext.extensionName, colorspaceExt) == 0)
+                {
+                    enabledExtensions.push_back(colorspaceExt);
+                    vkShade::Logger::debug("Enabling {}", colorspaceExt);
+                    break;
+                }
+            }
+        }
+    }
+
+    modifiedCreateInfo.enabledExtensionCount = static_cast<uint32_t>(enabledExtensions.size());
+    modifiedCreateInfo.ppEnabledExtensionNames = enabledExtensions.data();
 
     // Call through to next layer
     VkResult result = create_func(&modifiedCreateInfo, pAllocator, pInstance);

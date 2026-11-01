@@ -1,5 +1,6 @@
 #include "image.hpp"
 
+#include <algorithm>
 #include <effect_module.hpp>
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
@@ -14,6 +15,78 @@
 #include "initializers.hpp"
 #include "macros.hpp"
 
+namespace
+{
+    // Aspects an image *view* uses. Views that are sampled must select a single aspect,
+    // so combined depth/stencil formats are viewed as depth only.
+    VkImageAspectFlags view_aspect_flags(VkFormat format)
+    {
+        switch (format)
+        {
+            case VK_FORMAT_D16_UNORM:
+            case VK_FORMAT_X8_D24_UNORM_PACK32:
+            case VK_FORMAT_D32_SFLOAT:
+            case VK_FORMAT_D16_UNORM_S8_UINT:
+            case VK_FORMAT_D24_UNORM_S8_UINT:
+            case VK_FORMAT_D32_SFLOAT_S8_UINT:
+                return VK_IMAGE_ASPECT_DEPTH_BIT;
+            case VK_FORMAT_S8_UINT:
+                return VK_IMAGE_ASPECT_STENCIL_BIT;
+            default:
+                return VK_IMAGE_ASPECT_COLOR_BIT;
+        }
+    }
+
+    // Aspects a whole-image barrier has to cover: combined formats need both.
+    VkImageAspectFlags barrier_aspect_flags(VkFormat format)
+    {
+        switch (format)
+        {
+            case VK_FORMAT_D16_UNORM_S8_UINT:
+            case VK_FORMAT_D24_UNORM_S8_UINT:
+            case VK_FORMAT_D32_SFLOAT_S8_UINT:
+                return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+            default:
+                return view_aspect_flags(format);
+        }
+    }
+}  // namespace
+
+std::filesystem::path vkShade::VulkanImage::find_texture_file(const std::string& fileName)
+{
+    auto& config = Locator<ConfigManager>::get().app();
+    auto searchPaths = config.get<std::vector<std::string>>("ReShade", "TextureSearchPaths");
+
+    auto matches = [&](const std::filesystem::path& path)
+    {
+        auto a = path.filename().string();
+        auto b = fileName;
+        std::transform(a.begin(), a.end(), a.begin(), ::tolower);
+        std::transform(b.begin(), b.end(), b.begin(), ::tolower);
+        return a == b;
+    };
+
+    for (const auto& path : searchPaths.value_or(std::vector<std::string>{}))
+    {
+        std::error_code ec;
+        if (!std::filesystem::exists(path, ec) || !std::filesystem::is_directory(path, ec))
+            continue;
+
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(
+                 path, std::filesystem::directory_options::skip_permission_denied, ec))
+        {
+            if (ec)
+                break;
+            if (!entry.is_regular_file(ec))
+                continue;
+            if (matches(entry.path()))
+                return entry.path();
+        }
+    }
+
+    return {};
+}
+
 vkShade::VulkanImage::VulkanImage(VulkanDevice& device, const reshadefx::texture& info)
     : VulkanObject(device)
 {
@@ -22,6 +95,7 @@ vkShade::VulkanImage::VulkanImage(VulkanDevice& device, const reshadefx::texture
     m_extent.width  = info.width;
     m_extent.height = info.height;
     m_extent.depth  = info.depth;
+    m_mipLevels = std::max<uint16_t>(1, info.levels);
 
     m_format = convert_format(info.format);
 
@@ -29,7 +103,7 @@ vkShade::VulkanImage::VulkanImage(VulkanDevice& device, const reshadefx::texture
     if (m_format == VK_FORMAT_UNDEFINED)
         m_format = VK_FORMAT_R8G8B8A8_UNORM;
 
-    m_usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    m_usageFlags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
     if (info.render_target)
         m_usageFlags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -42,74 +116,29 @@ vkShade::VulkanImage::VulkanImage(VulkanDevice& device, const reshadefx::texture
         return a.name == "source";
     });
 
-    // If no explicit size is specified we need to extract it from the image file
-    if (it != info.annotations.end() && m_extent.width == 1 && m_extent.height == 1)
+    std::filesystem::path sourcePath;
+    if (it != info.annotations.end())
     {
-        // Find the file and probe dimensions before creating the image
-        auto& config = vkShade::Locator<vkShade::ConfigManager>::get().app();
-        auto searchPaths = config.get<std::vector<std::string>>("ReShade", "TextureSearchPaths");
-        std::string fileName = it->value.string_data;
+        sourcePath = find_texture_file(it->value.string_data);
+        if (sourcePath.empty())
+            throw std::runtime_error("Unable to find texture: " + it->value.string_data);
 
-        bool found = false;
-        for (auto& path : searchPaths.value_or(std::vector<std::string>{}))
+        if (m_extent.width == 1 && m_extent.height == 1)
         {
-            for (const auto& entry : std::filesystem::directory_iterator(path))
+            int w = 0, h = 0, c = 0;
+            if (stbi_info(sourcePath.string().c_str(), &w, &h, &c))
             {
-                // Do a case insensitive comparison since ReShade is a Windows app
-                auto a = entry.path().filename().string();
-                auto b = fileName;
-                std::transform(a.begin(), a.end(), a.begin(), ::tolower);
-                std::transform(b.begin(), b.end(), b.begin(), ::tolower);
-                if (a == b)
-                {
-                    int w, h, c;
-                    if (stbi_info(entry.path().string().c_str(), &w, &h, &c))
-                    {
-                        m_extent.width  = w;
-                        m_extent.height = h;
-                    }
-
-                    found = true;
-                    break;
-                }
+                m_extent.width = w;
+                m_extent.height = h;
             }
         }
-
-        if (!found)
-            throw std::runtime_error("Unable to find texture: " + fileName);
     }
 
     this->create_image();
     this->create_image_view();
 
-    if (it != info.annotations.end())
-    {
-        auto& config = vkShade::Locator<vkShade::ConfigManager>::get().app();
-        auto searchPaths = config.get<std::vector<std::string>>("ReShade", "TextureSearchPaths");
-        std::string fileName = it->value.string_data;
-
-        bool found = false;
-        for (auto& path : searchPaths.value_or(std::vector<std::string>{}))
-        {
-            for (const auto& entry : std::filesystem::directory_iterator(path))
-            {
-                // Do a case insensitive comparison since ReShade is a Windows app
-                auto a = entry.path().filename().string();
-                auto b = fileName;
-                std::transform(a.begin(), a.end(), a.begin(), ::tolower);
-                std::transform(b.begin(), b.end(), b.begin(), ::tolower);
-                if (a == b)
-                {
-                    this->load_from_file(entry.path().string());
-                    found = true;
-                    break;
-                }
-            }
-        }
-
-        if (!found)
-            throw std::runtime_error("Unable to find texture: " + fileName);
-    }
+    if (!sourcePath.empty())
+        this->load_from_file(sourcePath.string());
 }
 
 void vkShade::VulkanImage::load_from_file(const std::string& filePath)
@@ -204,6 +233,9 @@ vkShade::VulkanImage::~VulkanImage()
 {
     Logger::trace("Destroying VulkanImage");
 
+    if (m_srgbImageView != VK_NULL_HANDLE)
+        m_device.dispatch.DestroyImageView(m_device.handle, m_srgbImageView, nullptr);
+
     if (m_imageView != VK_NULL_HANDLE)
         m_device.dispatch.DestroyImageView(m_device.handle, m_imageView, nullptr);
 
@@ -211,40 +243,44 @@ vkShade::VulkanImage::~VulkanImage()
         vmaDestroyImage(m_device.allocator, m_image, m_allocation);
 }
 
+VkFormat vkShade::VulkanImage::srgb_variant(VkFormat format)
+{
+    switch (format)
+    {
+        case VK_FORMAT_R8G8B8A8_UNORM: return VK_FORMAT_R8G8B8A8_SRGB;
+        case VK_FORMAT_B8G8R8A8_UNORM: return VK_FORMAT_B8G8R8A8_SRGB;
+        case VK_FORMAT_A8B8G8R8_UNORM_PACK32: return VK_FORMAT_A8B8G8R8_SRGB_PACK32;
+        default: return VK_FORMAT_UNDEFINED;
+    }
+}
+
 void vkShade::VulkanImage::create_image()
 {
     VkImageCreateInfo imgInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .pNext = nullptr,
+        .flags = (srgb_variant(m_format) != VK_FORMAT_UNDEFINED) ? VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT : 0u,
         .imageType = VK_IMAGE_TYPE_2D,
         .format = m_format,
         .extent = VkExtent3D {m_extent.width, m_extent.height, 1},
-        .mipLevels = 1,
+        .mipLevels = m_mipLevels,
         .arrayLayers = 1,
-        .samples = VK_SAMPLE_COUNT_1_BIT,   // 1 sample per pixel = no MSAA
-        .tiling = VK_IMAGE_TILING_OPTIMAL,  // Let the GPU move the data as it sees fit
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = VK_IMAGE_TILING_OPTIMAL,
         .usage = m_usageFlags,
     };
 
-	// Always allocate images on dedicated GPU memory.
 	VmaAllocationCreateInfo allocInfo = {};
 	allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 	allocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	// Allocate and create the image.
 	VK_CHECK(vmaCreateImage(m_device.allocator, &imgInfo, &allocInfo, &m_image, &m_allocation, nullptr));
 }
 
 void vkShade::VulkanImage::create_image_view()
 {
-    // If the format is a depth format, we will need to have it use the correct aspect flag.
-	VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
-	if (m_format == VK_FORMAT_D32_SFLOAT)
-		aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
-	if (m_format == VK_FORMAT_S8_UINT)
-		aspectFlags = VK_IMAGE_ASPECT_STENCIL_BIT;
+	const VkImageAspectFlags aspectFlags = view_aspect_flags(m_format);
 
-	// Build an image view for the image.
     VkImageViewCreateInfo viewInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .pNext = nullptr,
@@ -254,13 +290,110 @@ void vkShade::VulkanImage::create_image_view()
         .subresourceRange = {
             .aspectMask = aspectFlags,
             .baseMipLevel = 0,
-            .levelCount = 1,
+            .levelCount = m_mipLevels,
             .baseArrayLayer = 0,
             .layerCount = 1,
         },
     };
 
 	VK_CHECK(m_device.dispatch.CreateImageView(m_device.handle, &viewInfo, nullptr, &m_imageView));
+
+    const VkFormat srgbFormat = srgb_variant(m_format);
+    if (srgbFormat != VK_FORMAT_UNDEFINED && m_owning)
+    {
+        viewInfo.format = srgbFormat;
+        VK_CHECK(m_device.dispatch.CreateImageView(m_device.handle, &viewInfo, nullptr, &m_srgbImageView));
+    }
+}
+
+void vkShade::VulkanImage::generate_mipmaps(VkCommandBuffer cmd)
+{
+    if (m_mipLevels <= 1)
+        return;
+
+    const VkImageAspectFlags aspect = view_aspect_flags(m_format);
+    int32_t mipWidth = static_cast<int32_t>(m_extent.width);
+    int32_t mipHeight = static_cast<int32_t>(m_extent.height);
+
+    for (uint32_t i = 1; i < m_mipLevels; ++i)
+    {
+        // Transition source mip to TRANSFER_SRC
+        VkImageMemoryBarrier2 srcBarrier {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            .srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+            .dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT,
+            .oldLayout = (i == 1) ? m_currentLayout : VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            .image = m_image,
+            .subresourceRange = { aspect, i - 1, 1, 0, 1 },
+        };
+        VkImageMemoryBarrier2 dstBarrier {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .srcStageMask = VK_PIPELINE_STAGE_2_NONE,
+            .srcAccessMask = VK_ACCESS_2_NONE,
+            .dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+            .dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .image = m_image,
+            .subresourceRange = { aspect, i, 1, 0, 1 },
+        };
+        std::array barriers = { srcBarrier, dstBarrier };
+        VkDependencyInfo dep {
+            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .imageMemoryBarrierCount = static_cast<uint32_t>(barriers.size()),
+            .pImageMemoryBarriers = barriers.data(),
+        };
+        m_device.dispatch.CmdPipelineBarrier2(cmd, &dep);
+
+        const int32_t nextW = std::max(1, mipWidth / 2);
+        const int32_t nextH = std::max(1, mipHeight / 2);
+
+        VkImageBlit2 blitRegion { .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2 };
+        blitRegion.srcOffsets[0] = { 0, 0, 0 };
+        blitRegion.srcOffsets[1] = { mipWidth, mipHeight, 1 };
+        blitRegion.dstOffsets[0] = { 0, 0, 0 };
+        blitRegion.dstOffsets[1] = { nextW, nextH, 1 };
+        blitRegion.srcSubresource = { aspect, i - 1, 0, 1 };
+        blitRegion.dstSubresource = { aspect, i, 0, 1 };
+
+        VkBlitImageInfo2 blitInfo {
+            .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+            .srcImage = m_image,
+            .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            .dstImage = m_image,
+            .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .regionCount = 1,
+            .pRegions = &blitRegion,
+            .filter = VK_FILTER_LINEAR,
+        };
+        m_device.dispatch.CmdBlitImage2(cmd, &blitInfo);
+
+        mipWidth = nextW;
+        mipHeight = nextH;
+    }
+
+    // Transition all mips to SHADER_READ_ONLY
+    VkImageMemoryBarrier2 finalBarrier {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+        .srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_TRANSFER_READ_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+        .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .image = m_image,
+        .subresourceRange = { aspect, 0, m_mipLevels, 0, 1 },
+    };
+    VkDependencyInfo finalDep {
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .imageMemoryBarrierCount = 1,
+        .pImageMemoryBarriers = &finalBarrier,
+    };
+    m_device.dispatch.CmdPipelineBarrier2(cmd, &finalDep);
+    m_currentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 }
 
 void vkShade::VulkanImage::blit_from(VkCommandBuffer cmd, VkImage source)
@@ -339,11 +472,7 @@ VkFormat vkShade::VulkanImage::convert_format(reshadefx::texture_format format)
 
 void vkShade::VulkanImage::transition_layout(VkCommandBuffer cmd, VkImageLayout newLayout)
 {
-    VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    if (m_format == VK_FORMAT_D32_SFLOAT)
-        aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-    if (m_format == VK_FORMAT_S8_UINT)
-        aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
+    const VkImageAspectFlags aspectMask = barrier_aspect_flags(m_format);
 
     VkImageMemoryBarrier2 imageBarrier = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,

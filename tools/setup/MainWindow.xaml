@@ -49,7 +49,7 @@
           <DockPanel>
             <Image DockPanel.Dock="Top" Source="Assets/lockup.png" Width="120" HorizontalAlignment="Left"
                    Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Margin="0,0,0,18"/>
-            <TextBlock DockPanel.Dock="Bottom" Text="v0.1.0 · x64" Foreground="{StaticResource InkMuted}"
+            <TextBlock DockPanel.Dock="Bottom" Text="v0.3.2 · x64" Foreground="{StaticResource InkMuted}"
                        FontFamily="Consolas" FontSize="11" VerticalAlignment="Bottom"/>
             <StackPanel x:Name="StepNav" Margin="0,8,0,0" VerticalAlignment="Top"/>
           </DockPanel>
@@ -66,7 +66,7 @@
                        Text="Post-processing for Second Life viewers. Block injects into the OpenGL viewer you choose, uses your GShade shader pack when present, and opens with Shift+B."/>
             <Border Background="{StaticResource Surface2}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="6" Padding="16" Margin="0,0,0,16">
               <StackPanel>
-                <TextBlock Margin="0,0,0,10" FontSize="13" Foreground="{StaticResource Ink}" Text="• GShade presets (extracts Heard.zip → Heard\)"/>
+                <TextBlock Margin="0,0,0,10" FontSize="13" Foreground="{StaticResource Ink}" Text="• GShade presets (extracts preset zips under gshade-presets\)"/>
                 <TextBlock Margin="0,0,0,10" FontSize="13" Foreground="{StaticResource Ink}" Text="• Local addons only (safe for OpenGL — no DXGI/DLSS seeds)"/>
                 <TextBlock FontSize="13" Foreground="{StaticResource Ink}" Text="• Overlay hotkey: Shift+B"/>
               </StackPanel>
@@ -144,7 +144,7 @@
               <Run Text="Block is ready"/><Run Text="." Foreground="{StaticResource Signal}"/>
             </TextBlock>
             <TextBlock TextWrapping="Wrap" FontSize="14" LineHeight="22" Foreground="{StaticResource InkMuted}" Margin="0,0,0,16"
-                       Text="Launch your viewer. In-world, press Shift+B to open the overlay. Browse presets from gshade-presets\Heard\ (real folder, not Heard.zip)."/>
+                       Text="Launch your viewer. In-world, press Shift+B to open the overlay. Browse presets from gshade-presets\."/>
           </StackPanel>
         </Grid>
       </Grid>

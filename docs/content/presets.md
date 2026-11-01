@@ -1,23 +1,32 @@
 # ReShade Presets
 
-vkShade supports ReShade-like preset files (`ReShade.ini`).
+Block supports ReShade-like preset files (`ReShade.ini`).
 
-The preset file is searched for in the same locations as `vkShade.ini`, or a
-custom file can be specified with the `VKSHADE_PRESET_FILE` environment
-variable.
+The preset file is searched for in the same locations as `Block.ini`, or a
+custom file can be specified with the `BLOCK_PRESET_FILE` / `VKSHADE_PRESET_FILE`
+environment variable.
 
 Uniform values are loaded from the preset and applied to effects at runtime.
 
 !!! TIP
-    The ReShade preset and vkShade config files both support hot-reloading.
+    Config and preset files hot-reload. Effect sources (`.fx` / includes) also
+    hot-reload when changed on disk.
 
-    If you overwrite the current config/preset file while vkShade is running, it
-    will immediately pick up the change and reload the file. This is currently
-    the supported way for tweaking uniforms at runtime.
+## Techniques
 
-!!! NOTE
-    ReShade preset support is functional, but currently partial.
+```ini
+Effects=SMAA.fx,MXAO.fx
+Techniques=SMAA@SMAA.fx,MXAO@MXAO.fx
+TechniqueSorting=SMAA@SMAA.fx,MXAO@MXAO.fx
+```
 
-    Uniforms are fully supported, but the `Techniques` and `TechniqueSorting`
-    parameters are not supported yet. Instead, vkShade uses it's own `Effects`
-    parameter and semantics.
+`Techniques` / `TechniqueSorting` use ReShade's `Name@File.fx` form. If only
+`Effects=` is set, every technique in those files is enabled (legacy behaviour).
+
+## Preprocessor definitions
+
+```ini
+PreprocessorDefinitions=RESHADE_DEPTH_INPUT_IS_REVERSED=1
+[SMAA.fx]
+PreprocessorDefinitions=SMAA_PRESET=1
+```

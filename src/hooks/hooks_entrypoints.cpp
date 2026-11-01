@@ -23,6 +23,29 @@ extern "C" VK_LAYER_EXPORT PFN_vkVoidFunction VKAPI_CALL vkShade_GetDeviceProcAd
 
     GETPROCADDR(AllocateCommandBuffers);
 
+    // Depth buffer tracking
+    GETPROCADDR(CreateImage);
+    GETPROCADDR(DestroyImage);
+    GETPROCADDR(CreateImageView);
+    GETPROCADDR(DestroyImageView);
+    GETPROCADDR(CmdBeginRendering);
+    GETPROCADDR(CmdEndRendering);
+    GETPROCADDR(CmdDraw);
+    GETPROCADDR(CmdDrawIndexed);
+    GETPROCADDR(CmdDrawIndirect);
+    GETPROCADDR(CmdDrawIndexedIndirect);
+    GETPROCADDR(CmdClearDepthStencilImage);
+    GETPROCADDR(CmdClearAttachments);
+
+    GETPROCADDR(BeginCommandBuffer);
+    GETPROCADDR(QueueSubmit);
+    GETPROCADDR(QueueSubmit2);
+
+    // VK_KHR_dynamic_rendering aliases of the core commands above
+    if (!strcmp(pName, "vkCmdBeginRenderingKHR")) return (PFN_vkVoidFunction)&vkShade_CmdBeginRendering;
+    if (!strcmp(pName, "vkCmdEndRenderingKHR")) return (PFN_vkVoidFunction)&vkShade_CmdEndRendering;
+    if (!strcmp(pName, "vkQueueSubmit2KHR")) return (PFN_vkVoidFunction)&vkShade_QueueSubmit2;
+
     {
         std::shared_lock lock(g_globalLock);
         auto& thisDevice = get_device_from_handle(device);

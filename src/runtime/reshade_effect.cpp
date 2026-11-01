@@ -53,20 +53,64 @@ vkShade::ReshadeEffect::~ReshadeEffect()
         });
     }
 
-    for (const auto& pass : m_passes)
+    for (auto& technique : m_techniques)
     {
-        m_device.dispatch.DestroyPipeline(m_device.handle, pass.pipeline, nullptr);
-        m_device.dispatch.DestroyPipelineLayout(m_device.handle, pass.pipelineLayout, nullptr);
-        m_device.dispatch.DestroyDescriptorSetLayout(m_device.handle, pass.imageSetLayout, nullptr);
+        for (const auto& pass : technique.passes)
+        {
+            m_device.dispatch.DestroyPipeline(m_device.handle, pass.pipeline, nullptr);
+            m_device.dispatch.DestroyPipelineLayout(m_device.handle, pass.pipelineLayout, nullptr);
+            m_device.dispatch.DestroyDescriptorSetLayout(m_device.handle, pass.imageSetLayout, nullptr);
+        }
     }
 
     m_device.dispatch.DestroyDescriptorSetLayout(m_device.handle, m_uniformSetLayout, nullptr);
     m_device.dispatch.DestroyDescriptorPool(m_device.handle, m_descriptorPool, nullptr);
 }
 
-void vkShade::ReshadeEffect::apply(VkCommandBuffer cmd, VulkanImage& outputImage)
+void vkShade::ReshadeEffect::set_technique_enabled(size_t index, bool enabled)
 {
-    auto& technique = m_module->techniques[0];
+    if (index >= m_techniques.size())
+        return;
+    m_techniques[index].info.enabled = enabled;
+    if (index < m_techniqueInfos.size())
+        m_techniqueInfos[index].enabled = enabled;
+}
+
+bool vkShade::ReshadeEffect::technique_enabled(size_t index) const
+{
+    return index < m_techniques.size() && m_techniques[index].info.enabled;
+}
+
+void vkShade::ReshadeEffect::set_overlay_focus(uint32_t active, uint32_t hovered)
+{
+    m_overlayActive = active;
+    m_overlayHovered = hovered;
+}
+
+bool vkShade::ReshadeEffect::apply(VkCommandBuffer cmd, VulkanImage& outputImage)
+{
+    bool wroteBackbuffer = false;
+    for (size_t i = 0; i < m_techniques.size(); ++i)
+    {
+        if (!m_techniques[i].info.enabled)
+            continue;
+        if (apply_technique_internal(cmd, outputImage, m_techniques[i]))
+            wroteBackbuffer = true;
+    }
+    return wroteBackbuffer;
+}
+
+bool vkShade::ReshadeEffect::apply_technique(VkCommandBuffer cmd, VulkanImage& outputImage, size_t techniqueIndex)
+{
+    if (techniqueIndex >= m_techniques.size() || !m_techniques[techniqueIndex].info.enabled)
+        return false;
+    return apply_technique_internal(cmd, outputImage, m_techniques[techniqueIndex]);
+}
+
+bool vkShade::ReshadeEffect::apply_technique_internal(VkCommandBuffer cmd, VulkanImage& outputImage, Technique& technique)
+{
+    auto& techniqueInfo = m_module->techniques[technique.moduleIndex];
+    bool wroteBackbuffer = false;
 
     // Clear the stencil buffer if we have one.
     if (m_stencilBuffer)
@@ -80,11 +124,8 @@ void vkShade::ReshadeEffect::apply(VkCommandBuffer cmd, VulkanImage& outputImage
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &range);
     }
 
-    // Iterate and apply effect passes
-    for (auto&& [pass, passInfo] : std::views::zip(m_passes, technique.passes))
+    for (auto&& [pass, passInfo] : std::views::zip(technique.passes, techniqueInfo.passes))
     {
-        bool isFinalPass = (&passInfo == &technique.passes.back());
-
         const VkClearValue clearValue = { .color = { .float32 = { 0.0f, 0.0f, 0.0f, 0.0f } } };
         const VkClearValue* clear = passInfo.clear_render_targets ? &clearValue : nullptr;
 
@@ -93,11 +134,13 @@ void vkShade::ReshadeEffect::apply(VkCommandBuffer cmd, VulkanImage& outputImage
             .height = outputImage.extent().height,
         };
         std::vector<VkRenderingAttachmentInfo> colorAttachments;
+        bool writesBackbuffer = true;
         for (const auto& name : passInfo.render_target_names)
         {
             if (name.empty())
-                break;  // render_target_names are contiguous, empty means end
+                break;
 
+            writesBackbuffer = false;
             auto* renderTarget = m_textures.at(name).get();
             if (colorAttachments.empty())
             {
@@ -116,6 +159,11 @@ void vkShade::ReshadeEffect::apply(VkCommandBuffer cmd, VulkanImage& outputImage
             colorAttachments.push_back(vkinit::rendering_attachment_info(outputImage.image_view(),
                                                                          clear,
                                                                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+            wroteBackbuffer = true;
+        }
+        else if (writesBackbuffer)
+        {
+            wroteBackbuffer = true;
         }
 
         VkExtent2D passExtent {
@@ -123,7 +171,6 @@ void vkShade::ReshadeEffect::apply(VkCommandBuffer cmd, VulkanImage& outputImage
             .height = passInfo.viewport_height ? passInfo.viewport_height : attachmentExtent.height,
         };
 
-        // Set up stencil attachment if there is one
         VkRenderingAttachmentInfo* stencilAttachment = nullptr;
         VkRenderingAttachmentInfo stencilAttachmentInfo;
 
@@ -141,15 +188,12 @@ void vkShade::ReshadeEffect::apply(VkCommandBuffer cmd, VulkanImage& outputImage
             stencilAttachment = &stencilAttachmentInfo;
         }
 
-        // Begin render pass
         VkRenderingInfo renderingInfo = vkinit::rendering_info(passExtent, colorAttachments,
                                                                nullptr, stencilAttachment);
         m_device.dispatch.CmdBeginRendering(cmd, &renderingInfo);
 
-        // Bind pipeline
         m_device.dispatch.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pass.pipeline);
 
-        // Set viewport and scissor
         VkViewport viewport = {
             .x = 0.0f,
             .y = 0.0f,
@@ -166,7 +210,6 @@ void vkShade::ReshadeEffect::apply(VkCommandBuffer cmd, VulkanImage& outputImage
         };
         m_device.dispatch.CmdSetScissor(cmd, 0, 1, &scissor);
 
-        // Bind descriptor sets
         std::array<VkDescriptorSet, 2> sets = { m_uniformSet, pass.imageSet };
         m_device.dispatch.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
             pass.pipelineLayout, 0, sets.size(), sets.data(), 0, nullptr);
@@ -177,29 +220,41 @@ void vkShade::ReshadeEffect::apply(VkCommandBuffer cmd, VulkanImage& outputImage
                 passInfo.stencil_reference_value);
         }
 
-        // Draw n vertices as defined in the pass (no vertex buffer)
         m_device.dispatch.CmdDraw(cmd, passInfo.num_vertices, 1, 0, 0);
 
         m_device.dispatch.CmdEndRendering(cmd);
 
-        // Transition intermediate render targets to SHADER_READ_ONLY_OPTIMAL for next pass
-        if (!isFinalPass)
+        // Always transition RTs to SHADER_READ_ONLY so later techniques can sample them
+        for (const auto& name : passInfo.render_target_names)
         {
-            for (const auto& name : passInfo.render_target_names)
-            {
-                if (name.empty())
-                    break;
+            if (name.empty())
+                break;
 
-                auto* renderTarget = m_textures.at(name).get();
-                renderTarget->transition_layout(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-            }
+            auto* renderTarget = m_textures.at(name).get();
+            renderTarget->transition_layout(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            if (pass.generateMipmaps)
+                renderTarget->generate_mipmaps(cmd);
         }
     }
+
+    return wroteBackbuffer;
 }
 
 void vkShade::ReshadeEffect::bind_input(VulkanImage& colorImage, VulkanImage& depthImage)
 {
-    for (auto&& [pass, passInfo] : std::views::zip(m_passes, m_module->techniques[0].passes))
+    for (size_t i = 0; i < m_techniques.size(); ++i)
+        bind_input_technique(colorImage, depthImage, i);
+}
+
+void vkShade::ReshadeEffect::bind_input_technique(VulkanImage& colorImage, VulkanImage& depthImage, size_t techniqueIndex)
+{
+    if (techniqueIndex >= m_techniques.size())
+        return;
+
+    auto& technique = m_techniques[techniqueIndex];
+    auto& techniqueInfo = m_module->techniques[technique.moduleIndex];
+
+    for (auto&& [pass, passInfo] : std::views::zip(technique.passes, techniqueInfo.passes))
     {
         for (const auto& binding : passInfo.texture_bindings)
         {
@@ -218,7 +273,7 @@ void vkShade::ReshadeEffect::bind_input(VulkanImage& colorImage, VulkanImage& de
             else if (texIt->semantic == "DEPTH")
                 imageView = depthImage.image_view();
             else
-                continue;  // Skip other textures (we only bind COLOR and DEPTH here)
+                continue;
 
             VkDescriptorImageInfo imageInfo = {
                 .sampler = sampler->handle(),
@@ -240,6 +295,36 @@ void vkShade::ReshadeEffect::bind_input(VulkanImage& colorImage, VulkanImage& de
     }
 }
 
+namespace
+{
+    void apply_preprocessor_definitions(reshadefx::preprocessor& pp, const std::string& effectFileName)
+    {
+        auto apply_defs = [&](const std::vector<std::string>& defs)
+        {
+            for (const auto& def : defs)
+            {
+                const auto eq = def.find('=');
+                if (eq == std::string::npos)
+                    pp.add_macro_definition(def, "1");
+                else
+                    pp.add_macro_definition(def.substr(0, eq), def.substr(eq + 1));
+            }
+        };
+
+        auto& app = vkShade::Locator<vkShade::ConfigManager>::get().app();
+        auto& preset = vkShade::Locator<vkShade::ConfigManager>::get().preset();
+
+        if (auto defs = app.get<std::vector<std::string>>("GENERAL", "PreprocessorDefinitions"))
+            apply_defs(*defs);
+        if (auto defs = app.get<std::vector<std::string>>("ReShade", "PreprocessorDefinitions"))
+            apply_defs(*defs);
+        if (auto defs = preset.get<std::vector<std::string>>("", "PreprocessorDefinitions"))
+            apply_defs(*defs);
+        if (auto defs = preset.get<std::vector<std::string>>(effectFileName, "PreprocessorDefinitions"))
+            apply_defs(*defs);
+    }
+}
+
 bool vkShade::ReshadeEffect::compile(std::filesystem::path filePath)
 {
     const bool useDebugInfo = false;
@@ -258,6 +343,8 @@ bool vkShade::ReshadeEffect::compile(std::filesystem::path filePath)
 	pp.add_macro_definition("BUFFER_RCP_HEIGHT", "(1.0 / BUFFER_HEIGHT)");
     pp.add_macro_definition("BUFFER_COLOR_BIT_DEPTH", std::to_string(format_bit_depth(m_swapchainInfo.format)));
     pp.add_macro_definition("BUFFER_COLOR_SPACE", std::to_string(convert_color_space(m_swapchainInfo.colorSpace)));
+
+    apply_preprocessor_definitions(pp, m_fileName);
 
     // Add include paths
     auto& config = vkShade::Locator<vkShade::ConfigManager>::get().app();
@@ -282,6 +369,11 @@ bool vkShade::ReshadeEffect::compile(std::filesystem::path filePath)
         return false;
 	}
 
+    m_sourceFiles.clear();
+    m_sourceFiles.push_back(filePath);
+    for (const auto& included : pp.included_files())
+        m_sourceFiles.push_back(included);
+
     std::unique_ptr<reshadefx::codegen> backend;
     backend.reset(reshadefx::create_codegen_spirv(true, useDebugInfo, useSpecConstants, enable16BitTypes, invertYAxis));
 
@@ -293,45 +385,85 @@ bool vkShade::ReshadeEffect::compile(std::filesystem::path filePath)
 	}
 
     m_module = std::make_unique<reshadefx::effect_module>(backend->module());
-    if (m_module->techniques.empty() || m_module->techniques[0].passes.empty())
+    if (m_module->techniques.empty())
     {
         Logger::error("No techniques found: {}", filePath.string());
         return false;
     }
 
-    for (const auto& pass : m_module->techniques[0].passes)
+    auto to_spirv = [](const std::string& binary)
     {
-        std::string vsEntryPoint = pass.vs_entry_point;
-        std::string psEntryPoint = pass.ps_entry_point;
+        std::vector<uint32_t> spirv(binary.size() / sizeof(uint32_t));
+        std::memcpy(spirv.data(), binary.data(), binary.size());
+        return spirv;
+    };
 
-        std::string vs_binary, vs_asm, ps_binary, ps_asm, errors;
+    m_techniques.clear();
+    m_techniqueInfos.clear();
 
-        if (!backend->assemble_code_for_entry_point(vsEntryPoint, vs_binary, vs_asm, errors))
+    for (size_t techIdx = 0; techIdx < m_module->techniques.size(); ++techIdx)
+    {
+        const auto& tech = m_module->techniques[techIdx];
+        if (tech.passes.empty())
         {
-            Logger::error("Failed to assemble vertex shader: {}", errors);
-            return false;
+            Logger::warn("Skipping empty technique '{}' in {}", tech.name, filePath.string());
+            continue;
         }
 
-        if (!backend->assemble_code_for_entry_point(psEntryPoint, ps_binary, ps_asm, errors))
+        Technique technique;
+        technique.moduleIndex = techIdx;
+        technique.info.name = tech.name;
+        technique.info.enabled = true;
+
+        for (const auto& a : tech.annotations)
         {
-            Logger::error("Failed to assemble pixel shader: {}", errors);
-            return false;
+            if (a.name == "ui_label")
+                technique.info.uiLabel = a.value.string_data;
+            else if (a.name == "ui_tooltip")
+                technique.info.uiTooltip = a.value.string_data;
+            else if (a.name == "hidden")
+                technique.info.hidden = a.value.as_int[0] != 0;
+            else if (a.name == "enabled")
+                technique.info.enabled = a.value.as_int[0] != 0;
         }
 
-        auto to_spirv = [](const std::string& binary)
+        for (const auto& pass : tech.passes)
         {
-            std::vector<uint32_t> spirv(binary.size() / sizeof(uint32_t));
-            std::memcpy(spirv.data(), binary.data(), binary.size());
-            return spirv;
-        };
+            if (pass.cs_entry_point.size() && pass.vs_entry_point.empty())
+            {
+                Logger::error("Compute passes are not supported yet: {}", pass.name);
+                return false;
+            }
 
-        std::vector<uint32_t> vsBytecode = to_spirv(vs_binary);
-        std::vector<uint32_t> psBytecode = to_spirv(ps_binary);
+            std::string vs_binary, vs_asm, ps_binary, ps_asm, errors;
 
-        m_passes.emplace_back(Pass{
-            .vertexShader = std::make_shared<vkShade::ShaderModule>(m_device, vsBytecode),
-            .fragmentShader = std::make_shared<vkShade::ShaderModule>(m_device, psBytecode)
-        });
+            if (!backend->assemble_code_for_entry_point(pass.vs_entry_point, vs_binary, vs_asm, errors))
+            {
+                Logger::error("Failed to assemble vertex shader: {}", errors);
+                return false;
+            }
+
+            if (!backend->assemble_code_for_entry_point(pass.ps_entry_point, ps_binary, ps_asm, errors))
+            {
+                Logger::error("Failed to assemble pixel shader: {}", errors);
+                return false;
+            }
+
+            technique.passes.emplace_back(Pass{
+                .vertexShader = std::make_shared<vkShade::ShaderModule>(m_device, to_spirv(vs_binary)),
+                .fragmentShader = std::make_shared<vkShade::ShaderModule>(m_device, to_spirv(ps_binary)),
+                .generateMipmaps = pass.generate_mipmaps,
+            });
+        }
+
+        m_techniqueInfos.push_back(technique.info);
+        m_techniques.push_back(std::move(technique));
+    }
+
+    if (m_techniques.empty())
+    {
+        Logger::error("No usable techniques found: {}", filePath.string());
+        return false;
     }
 
     return true;
@@ -481,12 +613,16 @@ vkShade::Uniform::UiType vkShade::ReshadeEffect::convert_uniform_ui_type(const s
 
 void vkShade::ReshadeEffect::reflect_descriptors()
 {
-    auto& technique = m_module->techniques[0];
-
-    // Create the descriptor pool
+    // Create the descriptor pool sized across all techniques
     uint32_t totalImageBindings = 0;
-    for (const auto& pass : technique.passes)
-        totalImageBindings += pass.texture_bindings.size();
+    uint32_t totalPasses = 0;
+    for (size_t i = 0; i < m_techniques.size(); ++i)
+    {
+        const auto& techInfo = m_module->techniques[m_techniques[i].moduleIndex];
+        totalPasses += static_cast<uint32_t>(techInfo.passes.size());
+        for (const auto& pass : techInfo.passes)
+            totalImageBindings += static_cast<uint32_t>(pass.texture_bindings.size());
+    }
 
     std::vector<VkDescriptorPoolSize> poolSizes;
     if (m_module->total_uniform_size > 0)
@@ -494,8 +630,8 @@ void vkShade::ReshadeEffect::reflect_descriptors()
     if (totalImageBindings > 0)
         poolSizes.push_back({ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, totalImageBindings });
 
-    // One UBO set, and an image set per-pass.
-    uint32_t maxSets = 1 + technique.passes.size();
+    // One UBO set, and an image set per-pass across all techniques.
+    uint32_t maxSets = 1 + totalPasses;
 
     VkDescriptorPoolCreateInfo poolInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
@@ -571,111 +707,120 @@ void vkShade::ReshadeEffect::reflect_descriptors()
         m_device.dispatch.UpdateDescriptorSets(m_device.handle, 1, &uboWrite, 0, nullptr);
     }
 
-    // Per-pass texture sets
-    for (auto&& [pass, passInfo] : std::views::zip(m_passes, m_module->techniques[0].passes))
+    // Per-pass texture sets across all techniques
+    for (auto& technique : m_techniques)
     {
-        // Allocate the set
-        std::vector<VkDescriptorSetLayoutBinding> textureBindings;
-        for (auto& binding : passInfo.texture_bindings)
+        const auto& techInfo = m_module->techniques[technique.moduleIndex];
+        for (auto&& [pass, passInfo] : std::views::zip(technique.passes, techInfo.passes))
         {
-            textureBindings.push_back({
-                .binding = binding.entry_point_binding,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .descriptorCount = 1,
-                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-            });
+            std::vector<VkDescriptorSetLayoutBinding> textureBindings;
+            for (auto& binding : passInfo.texture_bindings)
+            {
+                textureBindings.push_back({
+                    .binding = binding.entry_point_binding,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                    .descriptorCount = 1,
+                    .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+                });
+            }
+
+            VkDescriptorSetLayoutCreateInfo layoutInfo = {
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                .bindingCount = (uint32_t)textureBindings.size(),
+                .pBindings = textureBindings.data(),
+            };
+
+            VK_CHECK(m_device.dispatch.CreateDescriptorSetLayout(m_device.handle, &layoutInfo, nullptr, &pass.imageSetLayout));
+
+            VkDescriptorSetAllocateInfo allocInfo = {
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                .descriptorPool = m_descriptorPool,
+                .descriptorSetCount = 1,
+                .pSetLayouts = &pass.imageSetLayout,
+            };
+
+            VK_CHECK(m_device.dispatch.AllocateDescriptorSets(m_device.handle, &allocInfo, &pass.imageSet));
+
+            std::vector<VkDescriptorImageInfo> imageInfos;
+            imageInfos.reserve(passInfo.texture_bindings.size());
+            std::vector<VkWriteDescriptorSet> writes;
+
+            for (const auto& binding : passInfo.texture_bindings)
+            {
+                auto& samplerInfo = m_module->samplers.at(binding.index);
+                auto& sampler = m_samplers.at(binding.index);
+
+                auto texIt = std::find_if(m_module->textures.begin(), m_module->textures.end(),
+                    [&](const auto& t) { return t.unique_name == samplerInfo.texture_name; });
+
+                if (texIt != m_module->textures.end() && !texIt->semantic.empty())
+                    continue;
+
+                auto& texture = m_textures.at(samplerInfo.texture_name);
+                imageInfos.push_back({
+                    .sampler = sampler->handle(),
+                    .imageView = binding.srgb ? texture->srgb_image_view() : texture->image_view(),
+                    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                });
+
+                writes.push_back({
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet = pass.imageSet,
+                    .dstBinding = binding.entry_point_binding,
+                    .descriptorCount = 1,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                    .pImageInfo = &imageInfos.back(),
+                });
+            }
+
+            if (!writes.empty())
+                m_device.dispatch.UpdateDescriptorSets(m_device.handle, writes.size(), writes.data(), 0, nullptr);
         }
-
-        VkDescriptorSetLayoutCreateInfo layoutInfo = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-            .bindingCount = (uint32_t)textureBindings.size(),
-            .pBindings = textureBindings.data(),
-        };
-
-        VK_CHECK(m_device.dispatch.CreateDescriptorSetLayout(m_device.handle, &layoutInfo, nullptr, &pass.imageSetLayout));
-
-        VkDescriptorSetAllocateInfo allocInfo = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .descriptorPool = m_descriptorPool,
-            .descriptorSetCount = 1,
-            .pSetLayouts = &pass.imageSetLayout,
-        };
-
-        VK_CHECK(m_device.dispatch.AllocateDescriptorSets(m_device.handle, &allocInfo, &pass.imageSet));
-
-        // Write the set, unless its a semantic (COLOR or DEPTH) image.
-        std::vector<VkDescriptorImageInfo> imageInfos;
-        imageInfos.reserve(passInfo.texture_bindings.size());
-        std::vector<VkWriteDescriptorSet> writes;
-
-        for (const auto& binding : passInfo.texture_bindings)
-        {
-            auto& samplerInfo = m_module->samplers.at(binding.index);
-            auto& sampler = m_samplers.at(binding.index);
-
-            auto texIt = std::find_if(m_module->textures.begin(), m_module->textures.end(),
-                [&](const auto& t) { return t.unique_name == samplerInfo.texture_name; });
-
-            if (texIt != m_module->textures.end() && !texIt->semantic.empty())
-                continue;  // Skip semantic textures, they're bound per-frame
-
-            auto& texture = m_textures.at(samplerInfo.texture_name);
-            imageInfos.push_back({
-                .sampler = sampler->handle(),
-                //.imageView = binding.srgb ? texture->srgbView() : texture->linearView(),  // TODO: linear/srgb views
-                .imageView = texture->image_view(),
-                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            });
-
-            writes.push_back({
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = pass.imageSet,
-                .dstBinding = binding.entry_point_binding,
-                .descriptorCount = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .pImageInfo = &imageInfos.back(),
-            });
-        }
-
-        if (!writes.empty())
-            m_device.dispatch.UpdateDescriptorSets(m_device.handle, writes.size(), writes.data(), 0, nullptr);
     }
 }
 
 void vkShade::ReshadeEffect::reflect_images()
 {
-    // Iterate and check for depth textures since we don't support them yet
-    bool warnedAboutDepth = false;
-    for (const auto& pass : m_module->techniques[0].passes)
+    bool needsDepth = false;
+    for (const auto& tech : m_module->techniques)
     {
-        for (const auto& binding : pass.texture_bindings)
+        for (const auto& pass : tech.passes)
         {
-            auto& textureName = m_module->samplers.at(binding.index).texture_name;
-            auto texIt = std::find_if(m_module->textures.begin(), m_module->textures.end(),
-                [&](const auto& t) { return t.unique_name == textureName; });
-
-            // Warn about lack of proper depth support
-            if (!warnedAboutDepth && texIt != m_module->textures.end() && texIt->semantic == "DEPTH")
+            for (const auto& binding : pass.texture_bindings)
             {
-                Logger::warn("Effect may require depth buffer access, which is not yet supported.");
-                warnedAboutDepth = true;
+                auto& textureName = m_module->samplers.at(binding.index).texture_name;
+                auto texIt = std::find_if(m_module->textures.begin(), m_module->textures.end(),
+                    [&](const auto& t) { return t.unique_name == textureName; });
+
+                if (texIt != m_module->textures.end() && texIt->semantic == "DEPTH")
+                    needsDepth = true;
             }
         }
     }
+
+    if (needsDepth)
+        Logger::debug("Effect '{}' references depth; depth is provided when the tracker finds a candidate.", m_fileName);
 
     // Create/load the textures
     for (const auto& info : m_module->textures)
     {
         if (!info.semantic.empty())
-            continue;  // We don't own these, the application does.
+            continue;
 
         m_textures[info.unique_name] = std::make_unique<vkShade::VulkanImage>(m_device, info);
     }
 
     // Allocate stencil buffer if any pass requires it
-    bool hasStencil = std::any_of(m_module->techniques[0].passes.begin(),
-                                  m_module->techniques[0].passes.end(),
-                                  [](const auto& p) { return p.stencil_enable; });
+    bool hasStencil = false;
+    for (const auto& tech : m_module->techniques)
+    {
+        if (std::any_of(tech.passes.begin(), tech.passes.end(),
+                        [](const auto& p) { return p.stencil_enable; }))
+        {
+            hasStencil = true;
+            break;
+        }
+    }
 
     if (hasStencil)
     {
@@ -689,7 +834,8 @@ void vkShade::ReshadeEffect::reflect_images()
 
 void vkShade::ReshadeEffect::reflect_pipeline()
 {
-    for (auto&& [pass, passInfo] : std::views::zip(m_passes, m_module->techniques[0].passes))
+    for (auto& technique : m_techniques)
+    for (auto&& [pass, passInfo] : std::views::zip(technique.passes, m_module->techniques[technique.moduleIndex].passes))
     {
         std::vector<VkFormat> colorFormats;
         for (const auto& name : passInfo.render_target_names)
@@ -892,11 +1038,11 @@ void vkShade::ReshadeEffect::reflect_uniforms()
                     m_builtinUniforms.push_back(std::make_unique<vkShade::MouseWheelUniform>(uniform));
                 else if (source == "bufready_depth")
                     m_builtinUniforms.push_back(std::make_unique<vkShade::DepthUniform>(uniform));
-                else if (source == "overlay_open")
+                else if (source == "overlay_open" || source == "ui_open")
                     m_builtinUniforms.push_back(std::make_unique<vkShade::OverlayOpenUniform>(uniform));
-                else if (source == "overlay_active")
+                else if (source == "overlay_active" || source == "ui_active")
                     m_builtinUniforms.push_back(std::make_unique<vkShade::OverlayActiveUniform>(uniform));
-                else if (source == "overlay_hovered")
+                else if (source == "overlay_hovered" || source == "ui_hovered")
                     m_builtinUniforms.push_back(std::make_unique<vkShade::OverlayHoveredUniform>(uniform));
                 else if (source == "screenshot")
                     m_builtinUniforms.push_back(std::make_unique<vkShade::ScreenshotUniform>(uniform));

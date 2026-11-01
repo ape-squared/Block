@@ -34,3 +34,30 @@ TEST_CASE("ReShade generated uniforms use the reference defaults")
     REQUIRE(vkShade::reshade_uniform_uses_initializer(""));
     REQUIRE_FALSE(vkShade::reshade_uniform_uses_initializer("addon_defined"));
 }
+
+TEST_CASE("ReShade key input modes")
+{
+    vkShade::ReshadeKeyState state;
+    state.mode = vkShade::ReshadeInputMode::Down;
+    REQUIRE(state.evaluate(true, false));
+    REQUIRE_FALSE(state.evaluate(false, false));
+
+    state.mode = vkShade::ReshadeInputMode::Pressed;
+    REQUIRE(state.evaluate(true, true));
+    REQUIRE_FALSE(state.evaluate(true, false));
+
+    state.mode = vkShade::ReshadeInputMode::Toggle;
+    REQUIRE(state.evaluate(false, true));
+    REQUIRE(state.evaluate(false, false));
+    REQUIRE_FALSE(state.evaluate(false, true));
+}
+
+TEST_CASE("ReShade mouse wheel clamp")
+{
+    vkShade::ReshadeMouseWheelState wheel;
+    wheel.min = 0.0f;
+    wheel.max = 1.0f;
+    wheel.step = 0.25f;
+    REQUIRE(wheel.advance(1.0f) == Catch::Approx(0.25f));
+    REQUIRE(wheel.advance(10.0f) == Catch::Approx(1.0f));
+}

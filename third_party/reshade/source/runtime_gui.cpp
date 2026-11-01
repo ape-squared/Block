@@ -35,6 +35,35 @@ static bool string_contains(const std::string_view text, const std::string_view 
 				return (('a' <= c1 && c1 <= 'z') ? static_cast<char>(c1 - ' ') : c1) == (('a' <= c2 && c2 <= 'z') ? static_cast<char>(c2 - ' ') : c2);
 			}) != text.cend();
 }
+
+// Block brand mark (lime square) + wordmark — drawn with ImGui so no PNG pipeline is required.
+static void draw_block_brand_lockup(float mark_scale = 1.35f, bool show_tagline = false)
+{
+	const float mark = ImGui::GetFontSize() * mark_scale;
+	const ImVec2 origin = ImGui::GetCursorScreenPos();
+	ImDrawList *const dl = ImGui::GetWindowDrawList();
+	const ImU32 signal = IM_COL32(0xD4, 0xFF, 0x3F, 255);
+	const ImU32 ink = IM_COL32(0x0B, 0x0C, 0x0E, 255);
+
+	dl->AddRectFilled(origin, ImVec2(origin.x + mark, origin.y + mark), signal, mark * 0.18f);
+	{
+		const char *glyph = "B";
+		const ImVec2 gs = ImGui::CalcTextSize(glyph);
+		dl->AddText(ImVec2(origin.x + (mark - gs.x) * 0.5f, origin.y + (mark - gs.y) * 0.5f - 1.0f), ink, glyph);
+	}
+
+	ImGui::Dummy(ImVec2(mark + ImGui::GetFontSize() * 0.45f, mark));
+	ImGui::SameLine(0.0f, 0.0f);
+
+	ImGui::BeginGroup();
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.831373f, 1.0f, 0.247059f, 1.0f));
+	ImGui::TextUnformatted("BLOCK");
+	ImGui::PopStyleColor();
+	if (show_tagline)
+		ImGui::TextDisabled("Post-processing for Second Life viewers.");
+	ImGui::EndGroup();
+}
+
 static auto is_invalid_path_element(ImGuiInputTextCallbackData *data) -> int
 {
 	return data->EventChar == L'\"' || data->EventChar == L'*' || data->EventChar == L':' || data->EventChar == L'<' || data->EventChar == L'>' || data->EventChar == L'?' || data->EventChar == L'|';
@@ -209,6 +238,45 @@ void reshade::runtime::build_font_atlas()
 		}
 	}
 #endif
+
+	// Block brand UI fonts when no language-specific face was chosen and user left FontPath empty.
+	if (_default_font_path.empty() && _font_path.empty())
+	{
+		std::filesystem::path user_fonts;
+		if (const char *local = std::getenv("LOCALAPPDATA"))
+			user_fonts = std::filesystem::path(local) / "Microsoft" / "Windows" / "Fonts";
+
+		const std::filesystem::path candidates[] = {
+			user_fonts / "Inter.ttf",
+			user_fonts / "Inter-Regular.ttf",
+			user_fonts / "SpaceGrotesk-Regular.ttf",
+			"C:\\Windows\\Fonts\\segoeui.ttf",
+			"C:\\Windows\\Fonts\\CascadiaMono.ttf",
+		};
+		for (const auto &candidate : candidates)
+		{
+			if (!candidate.empty() && std::filesystem::exists(candidate, ec))
+			{
+				_default_font_path = candidate;
+				break;
+			}
+		}
+	}
+	if (_default_editor_font_path.empty())
+	{
+		const std::filesystem::path editor_candidates[] = {
+			"C:\\Windows\\Fonts\\CascadiaMono.ttf",
+			"C:\\Windows\\Fonts\\consola.ttf",
+		};
+		for (const auto &candidate : editor_candidates)
+		{
+			if (std::filesystem::exists(candidate, ec))
+			{
+				_default_editor_font_path = candidate;
+				break;
+			}
+		}
+	}
 
 	const auto add_font_from_file = [atlas](std::filesystem::path &font_path, const ImFontConfig *font_config, std::error_code &ec) -> bool {
 		if (font_path.empty())
@@ -1091,19 +1159,14 @@ void reshade::runtime::draw_gui()
 			imgui::spinner((_effects.size() - _reload_remaining_effects) / float(_effects.size()), 18.0f * ImGui::GetFontSize() / 13, 5.0f * ImGui::GetFontSize() / 13);
 			ImGui::SameLine(0.0f, ImGui::GetFontSize() * 0.75f);
 			ImGui::BeginGroup();
-			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.831373f, 1.0f, 0.247059f, 1.0f));
-			ImGui::TextUnformatted("BLOCK");
-			ImGui::PopStyleColor();
+			draw_block_brand_lockup(1.15f, false);
 			ImGui::TextDisabled("Loading preset…");
 			ImGui::EndGroup();
 			ImGui::EndGroup();
 		}
 		else
 		{
-			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.831373f, 1.0f, 0.247059f, 1.0f));
-			ImGui::TextUnformatted("BLOCK");
-			ImGui::PopStyleColor();
-			ImGui::TextDisabled("Post-processing for Second Life viewers.");
+			draw_block_brand_lockup(1.45f, true);
 
 			ImGui::Spacing();
 
@@ -1630,8 +1693,14 @@ void reshade::runtime::draw_gui_home()
 				}
 				else
 				{
-					ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.35f, 1.0f), "Depth missing");
-					ImGui::SetItemTooltip("No depth buffer selected. Open Add-ons → Generic Depth to pick one.");
+					ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.35f, 0.12f, 0.10f, 0.85f));
+					ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.55f, 0.18f, 0.14f, 1.0f));
+					ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.70f, 0.22f, 0.16f, 1.0f));
+					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.55f, 0.45f, 1.0f));
+					if (ImGui::SmallButton("Depth missing"))
+						ImGui::SetWindowFocus("Add-ons###addons");
+					ImGui::PopStyleColor(4);
+					ImGui::SetItemTooltip("No depth buffer selected. Click to open Add-ons → pick Generic Depth.");
 				}
 			}
 			ImGui::SameLine(0, 12.0f);
@@ -1719,7 +1788,7 @@ void reshade::runtime::draw_gui_home()
 			browse_label += "###browse_button";
 			if (ImGui::ButtonEx(browse_label.c_str(), ImVec2(browse_button_width, 0), ImGuiButtonFlags_NoNavFocus))
 			{
-				// Stay in the active pack folder (Heard, Neneko, …). Only fall back to
+				// Stay in the active GShade pack folder. Only fall back to
 				// gshade-presets root when the current preset has no usable parent.
 				// Never start inside a .zip — cannot enumerate zip paths like Explorer.
 				std::error_code browse_ec;
@@ -1798,48 +1867,70 @@ void reshade::runtime::draw_gui_home()
 
 		ImGui::SameLine(0, button_spacing);
 
-		if (ImGui::Button("Fav", ImVec2(0, button_height)))
+		if (ImGui::Button(ICON_FK_STAR " Fav", ImVec2(0, button_height)))
 			ImGui::OpenPopup("##block_favorites");
 		ImGui::SetItemTooltip("Favorite presets");
 		if (ImGui::BeginPopup("##block_favorites"))
 		{
+			static char fav_filter[64] = {};
+			ImGui::SetNextItemWidth(14.0f * ImGui::GetFontSize());
+			ImGui::InputTextWithHint("##fav_filter", "Search favorites…", fav_filter, sizeof(fav_filter));
+			ImGui::Separator();
 			if (_favorite_presets.empty())
 				ImGui::TextDisabled("No favorites yet — click the star");
 			else
 			{
+				bool any = false;
 				for (const std::filesystem::path &fav : _favorite_presets)
 				{
-					if (ImGui::Selectable(fav.stem().u8string().c_str()))
+					const std::string stem = fav.stem().u8string();
+					if (!string_contains(stem, fav_filter) && !string_contains(fav.u8string(), fav_filter))
+						continue;
+					any = true;
+					if (ImGui::Selectable(stem.c_str()))
 					{
 						if (switch_to_next_preset(fav))
 							reload_preset = true;
 					}
 					ImGui::SetItemTooltip("%s", fav.u8string().c_str());
 				}
+				if (!any)
+					ImGui::TextDisabled("No matches");
 			}
 			ImGui::EndPopup();
 		}
 
 		ImGui::SameLine(0, button_spacing);
 
-		if (ImGui::Button("Recent", ImVec2(0, button_height)))
+		if (ImGui::Button(ICON_FK_CLOCK " Recent", ImVec2(0, button_height)))
 			ImGui::OpenPopup("##block_recent");
 		ImGui::SetItemTooltip("Recently used presets");
 		if (ImGui::BeginPopup("##block_recent"))
 		{
+			static char recent_filter[64] = {};
+			ImGui::SetNextItemWidth(14.0f * ImGui::GetFontSize());
+			ImGui::InputTextWithHint("##recent_filter", "Search recent…", recent_filter, sizeof(recent_filter));
+			ImGui::Separator();
 			if (_recent_presets.empty())
 				ImGui::TextDisabled("No recent presets");
 			else
 			{
+				bool any = false;
 				for (const std::filesystem::path &recent : _recent_presets)
 				{
-					if (ImGui::Selectable(recent.stem().u8string().c_str()))
+					const std::string stem = recent.stem().u8string();
+					if (!string_contains(stem, recent_filter) && !string_contains(recent.u8string(), recent_filter))
+						continue;
+					any = true;
+					if (ImGui::Selectable(stem.c_str()))
 					{
 						if (switch_to_next_preset(recent))
 							reload_preset = true;
 					}
 					ImGui::SetItemTooltip("%s", recent.u8string().c_str());
 				}
+				if (!any)
+					ImGui::TextDisabled("No matches");
 			}
 			ImGui::EndPopup();
 		}
@@ -2060,14 +2151,12 @@ void reshade::runtime::draw_gui_home()
 	if (_reload_remaining_effects != std::numeric_limits<size_t>::max())
 	{
 		const ImVec2 mid = ImGui::GetWindowSize() * 0.5f;
-		ImGui::SetCursorPos(mid - ImVec2(60, 28));
+		ImGui::SetCursorPos(mid - ImVec2(72, 28));
 		ImGui::BeginGroup();
 		imgui::spinner((_effects.size() - _reload_remaining_effects) / float(_effects.size()), 18.0f * ImGui::GetFontSize() / 13, 5.0f * ImGui::GetFontSize() / 13);
 		ImGui::SameLine(0.0f, 12.0f);
 		ImGui::BeginGroup();
-		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.831373f, 1.0f, 0.247059f, 1.0f));
-		ImGui::TextUnformatted("BLOCK");
-		ImGui::PopStyleColor();
+		draw_block_brand_lockup(1.15f, false);
 		ImGui::TextDisabled("Loading…");
 		ImGui::EndGroup();
 		ImGui::EndGroup();
@@ -2257,7 +2346,7 @@ void reshade::runtime::draw_gui_home()
 
 		ImGui::SetItemTooltip(_(
 			"Folds uniforms into constants for less CPU per frame.\n"
-			"Block leaves this off by default so Heard/GShade presets look right — turn on after you're done tweaking."));
+			"Block leaves this off by default so GShade presets look right — turn on after you're done tweaking."));
 	}
 	else
 	{
@@ -2578,7 +2667,7 @@ void reshade::runtime::draw_gui_settings()
 		modified |= ImGui::Checkbox(_("Group effect files with tabs instead of a tree"), &_variable_editor_tabs);
 
 		#pragma region Style
-		if (ImGui::Combo(_("Global style"), &_style_index, "Dark\0Light\0Default\0Custom Simple\0Custom Advanced\0Solarized Dark\0Solarized Light\0"))
+		if (ImGui::Combo(_("Global style"), &_style_index, "Dark\0Light\0Block\0Custom Simple\0Custom Advanced\0Solarized Dark\0Solarized Light\0"))
 		{
 			modified = true;
 			load_custom_style();
@@ -3420,10 +3509,8 @@ void reshade::runtime::draw_gui_log()
 }
 void reshade::runtime::draw_gui_about()
 {
-	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.831373f, 1.0f, 0.247059f, 1.0f));
-	ImGui::TextUnformatted("BLOCK");
-	ImGui::PopStyleColor();
-	ImGui::TextDisabled("Post-processing for Second Life viewers.");
+	draw_block_brand_lockup(1.6f, true);
+	ImGui::Spacing();
 	ImGui::Text("%s %s", _("Version"), BLOCK_VERSION_STRING);
 	if (s_latest_version[0] != 0 || s_latest_version[1] != 0 || s_latest_version[2] != 0)
 		ImGui::TextDisabled("%s %u.%u.%u", _("Latest on GitHub:"), s_latest_version[0], s_latest_version[1], s_latest_version[2]);

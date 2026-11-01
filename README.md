@@ -45,7 +45,7 @@ Post-processing for Second Life viewers (OpenGL) on Windows, plus an experimenta
 |--|:---:|:---:|:---:|:---:|
 | 📂 Open source injector | ✅ | ❌ | ✅ | ✅ |
 | 🧍 Second Life OpenGL | ✅ Setup | ✅ | ⚠️ DIY | ❌ |
-| 🎨 GShade / Heard presets | ✅ | ✅ | ⚠️ | ⚠️ Vulkan |
+| 🎨 GShade presets | ✅ | ✅ | ⚠️ | ⚠️ Vulkan |
 | 🪞 GShade look (`__GSHADE__`, DEPTH_II) | ✅ | ✅ | ❌ | ❌ |
 | ⏱️ FX ms + Trim heavy | ✅ | ⚠️ | ⚠️ | ❌ |
 | 📍 Depth persist / Depth OK | ✅ | ⚠️ | ⚠️ | ⚠️ |
@@ -70,7 +70,7 @@ Uses your GShade shaders when installed. Not affiliated with ReShade / GShade.
 ### OpenGL (Windows viewers)
 
 - Block Setup finds Firestorm, Alchemy, Black Dragon, Cool VL, Singularity, Kokua, …  
-- Wires GShade shaders / Heard presets when present  
+- Wires GShade shaders and presets when present  
 - Overlay blocks clicks from falling through into Second Life  
 - Addon picker that stays OpenGL-safe (catalog under `%LOCALAPPDATA%\Block\addons-catalog`)  
 - Crash dumps + next-launch prompt with a prefilled GitHub issue draft  
@@ -91,7 +91,7 @@ Not supported yet. A future Mac Block would be a **Metal** rebuild (native bridg
 1. Download the latest [Windows release zip](https://github.com/ape-squared/Block/releases/latest) or build from source ([Build](#build)).  
 2. Run **Block Setup** and check every OpenGL viewer you use.  
 3. Launch the viewer. In-world, press **`Shift`+`B`**.  
-4. Browse presets (e.g. `gshade-presets\Heard\`) and toggle techniques.
+4. Browse presets under `gshade-presets\` and toggle techniques.
 
 Logs: `ReShade.log` next to the viewer (OpenGL), or a custom path from Settings. Prefer pasting log text in issues — not screenshots of screenshots.
 

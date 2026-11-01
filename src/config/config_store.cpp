@@ -34,10 +34,12 @@ vkShade::ConfigStore::ConfigStore(Type type)
 
 void vkShade::ConfigStore::clear()
 {
-    m_watcher->unwatch();
+    if (m_watcher)
+        m_watcher->unwatch();
     m_currentFile = std::filesystem::path{};
+    // Avoid notifying with an empty store during reload — callers that need a full
+    // refresh already notify after load(). This prevents double effect rebuilds.
     m_config.clear();
-    m_observer.notify_all(*this);
 }
 
 bool vkShade::ConfigStore::load(std::filesystem::path filePath)

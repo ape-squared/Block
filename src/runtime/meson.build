@@ -1,4 +1,5 @@
 libruntime_source = [
+  'depth_tracker.cpp',
   'reshade_effect.cpp',
   'reshade_uniforms.cpp',
   'runtime.cpp',

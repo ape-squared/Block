@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <bitset>
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
@@ -22,11 +23,71 @@ namespace vkShade
         return std::chrono::duration<float, std::milli>(duration).count();
     }
 
+    enum class ReshadeInputMode : uint8_t
+    {
+        Down = 0,
+        Pressed = 1,
+        Toggle = 2,
+    };
+
+    struct ReshadeKeyState
+    {
+        uint32_t keycode {0};
+        ReshadeInputMode mode {ReshadeInputMode::Down};
+        bool toggled {false};
+
+        bool evaluate(bool down, bool pressed)
+        {
+            switch (mode)
+            {
+                case ReshadeInputMode::Pressed:
+                    return pressed;
+                case ReshadeInputMode::Toggle:
+                    if (pressed)
+                        toggled = !toggled;
+                    return toggled;
+                case ReshadeInputMode::Down:
+                default:
+                    return down;
+            }
+        }
+    };
+
+    struct ReshadeMouseWheelState
+    {
+        float min {0.0f};
+        float max {0.0f};
+        float step {1.0f};
+        float value {0.0f};
+
+        float advance(float delta)
+        {
+            value += delta * step;
+            if (min != max)
+                value = std::clamp(value, min, max);
+            return value;
+        }
+    };
+
     struct ReshadeFrameState
     {
         float frameTime {0.0f};
         uint32_t frameCount {0};
         float timer {0.0f};
+
+        std::array<float, 2> mousePoint {0.0f, 0.0f};
+        std::array<float, 2> mouseDelta {0.0f, 0.0f};
+        float mouseWheel {0.0f};
+        std::array<bool, 5> mouseButtonsDown {};
+        std::array<bool, 5> mouseButtonsPressed {};
+        std::bitset<256> keysDown {};
+        std::bitset<256> keysPressed {};
+
+        bool overlayOpen {false};
+        uint32_t overlayActive {0};
+        uint32_t overlayHovered {0};
+        bool hasDepth {false};
+        bool screenshot {false};
     };
 
     struct ReshadePingPongState
@@ -127,7 +188,7 @@ namespace vkShade
         void update(VulkanBuffer& buffer, const ReshadeFrameState& frame) override;
     };
 
- class PingPongUniform : public ReshadeUniform
+    class PingPongUniform : public ReshadeUniform
     {
     public:
         PingPongUniform(reshadefx::uniform uniform);
@@ -136,7 +197,6 @@ namespace vkShade
     private:
         ReshadePingPongState m_state;
     };
-
 
     class RandomUniform : public ReshadeUniform
     {
@@ -153,6 +213,9 @@ namespace vkShade
     public:
         KeyUniform(reshadefx::uniform uniform);
         void update(VulkanBuffer& buffer, const ReshadeFrameState& frame) override;
+
+    private:
+        ReshadeKeyState m_state;
     };
 
     class MouseButtonUniform : public ReshadeUniform
@@ -160,6 +223,9 @@ namespace vkShade
     public:
         MouseButtonUniform(reshadefx::uniform uniform);
         void update(VulkanBuffer& buffer, const ReshadeFrameState& frame) override;
+
+    private:
+        ReshadeKeyState m_state;
     };
 
     class MousePointUniform : public ReshadeUniform
@@ -181,6 +247,9 @@ namespace vkShade
     public:
         MouseWheelUniform(reshadefx::uniform uniform);
         void update(VulkanBuffer& buffer, const ReshadeFrameState& frame) override;
+
+    private:
+        ReshadeMouseWheelState m_state;
     };
 
     class DepthUniform : public ReshadeUniform

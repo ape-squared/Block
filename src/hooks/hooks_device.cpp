@@ -208,7 +208,12 @@ VK_LAYER_EXPORT VkResult VKAPI_CALL vkShade_CreateDevice(
     {
         // Acquire a writer lock
         std::unique_lock lock(g_globalLock);
-        g_vulkanDevices.emplace(dispatch_key_from_handle(*pDevice), thisDevice);
+
+        // The device is move-only (it owns its depth tracker). Map entries never move, so
+        // the tracker can safely keep a reference to the stored device.
+        auto [it, inserted] = g_vulkanDevices.emplace(dispatch_key_from_handle(*pDevice), std::move(thisDevice));
+        if (inserted)
+            it->second.depthTracker = std::make_unique<vkShade::DepthTracker>(it->second);
     }
 
     vkShade::Logger::info("Layer initialization complete");
@@ -219,17 +224,22 @@ VK_LAYER_EXPORT void VKAPI_CALL vkShade_DestroyDevice(VkDevice device, const VkA
 {
     vkShade::Logger::trace("Intercepted VkDestroyDevice");
 
-    // Lock here to prevent race conditions.
-    std::unique_lock lock(g_globalLock);
-
     if (!device)
         return;
 
-    auto& thisDevice = get_device_from_handle(device);
-
-    // First destroy anything that calls into Vulkan
+    // First destroy anything that calls into Vulkan. This must happen before taking the
+    // writer lock: ImGui releases its resources through our hooked entrypoints, which take
+    // the reader lock to find the device.
     if (vkShade::Locator<vkShade::GuiManager>::has())
         vkShade::Locator<vkShade::GuiManager>::reset();
+
+    // Lock here to prevent race conditions.
+    std::unique_lock lock(g_globalLock);
+
+    auto& thisDevice = get_device_from_handle(device);
+
+    // The tracker owns Vulkan images that need the allocator, so it goes before it.
+    thisDevice.depthTracker.reset();
 
     thisDevice.dispatch.DestroyCommandPool(thisDevice.handle, thisDevice.commandPool, nullptr);
 

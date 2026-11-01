@@ -1,5 +1,7 @@
 #include "effects_panel.hpp"
 
+#include <algorithm>
+
 #include "config/config_manager.hpp"
 #include "core/events/reload_effects.hpp"
 #include "core/service_locator.hpp"
@@ -318,7 +320,8 @@ void vkShade::EffectsPanel::render_uniform_controls()
     // FIXME: This is awful but we're already doing it elsewhere and it works for now
     Runtime& runtime = g_runtimes.begin()->second;
 
-    const ReshadeEffect* effect = runtime.get_effect(m_selectedActiveByName);
+    ReshadeEffect* effectMutable = runtime.get_effect_mutable(m_selectedActiveByName);
+    const ReshadeEffect* effect = effectMutable;
     if (!effect)
     {
         const char* text = "No active effect selected";
@@ -334,6 +337,46 @@ void vkShade::EffectsPanel::render_uniform_controls()
 
         return;
     }
+
+    // Technique enable toggles
+    if (effect->technique_count() > 1)
+    {
+        auto techniques = m_preset.get<std::vector<std::string>>("", "Techniques")
+            .value_or(std::vector<std::string>{});
+        bool techniquesDirty = false;
+        for (size_t i = 0; i < effect->technique_count(); ++i)
+        {
+            const auto& info = effect->techniques()[i];
+            if (info.hidden)
+                continue;
+            const std::string key = info.name + "@" + effect->name();
+            bool enabled = effect->technique_enabled(i);
+            if (ImGui::Checkbox(info.uiLabel.empty() ? info.name.c_str() : info.uiLabel.c_str(), &enabled))
+            {
+                effectMutable->set_technique_enabled(i, enabled);
+                techniques.erase(std::remove(techniques.begin(), techniques.end(), key), techniques.end());
+                techniques.erase(std::remove(techniques.begin(), techniques.end(), effect->name()), techniques.end());
+                if (enabled)
+                    techniques.push_back(key);
+                techniquesDirty = true;
+            }
+            if (!info.uiTooltip.empty())
+                ImGui::SetItemTooltip("%s", info.uiTooltip.c_str());
+        }
+        if (techniquesDirty)
+        {
+            m_preset.set("", "Techniques", techniques);
+            m_preset.set("", "TechniqueSorting", techniques);
+        }
+        ImGui::Separator();
+    }
+
+    // Depth status
+    ImGui::TextDisabled("Depth: %s", runtime.has_depth() ? "ready" : "unavailable");
+    ImGui::Separator();
+
+    uint32_t overlayActive = 0;
+    uint32_t overlayHovered = 0;
 
     // Reset Button (All Uniforms)
     if (ImGui::Button("Reset All to Default", ImVec2(-FLT_MIN, 0.0f)))
@@ -478,8 +521,9 @@ void vkShade::EffectsPanel::render_uniform_controls()
         if (!uniform.uiText.empty())
             ImGui::TextWrapped("%s", uniform.uiText.c_str());
 
-        bool hasStepControl = (*uniform.uiType == Uniform::UiType::Drag ||
-                               *uniform.uiType == Uniform::UiType::Slider) &&
+        const Uniform::UiType uiType = uniform.uiType.value_or(Uniform::UiType::Drag);
+        bool hasStepControl = (uiType == Uniform::UiType::Drag ||
+                               uiType == Uniform::UiType::Slider) &&
                                uniform.components == 1;
 
         // Subtract width for step controls, if present.
@@ -489,7 +533,7 @@ void vkShade::EffectsPanel::render_uniform_controls()
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - stepControlsWidth);
 
-        switch (*uniform.uiType)
+        switch (uiType)
         {
             case Uniform::UiType::Input:  render_uniform_input(uniform);  break;
             case Uniform::UiType::Drag:   render_uniform_drag(uniform);   break;
@@ -498,6 +542,23 @@ void vkShade::EffectsPanel::render_uniform_controls()
             case Uniform::UiType::Radio:  render_uniform_radio(uniform);  break;
             case Uniform::UiType::Color:  render_uniform_color(uniform);  break;
             case Uniform::UiType::Button: render_uniform_button(uniform); break;
+        }
+
+        // ReShade overlay_active / overlay_hovered use 1-based indices into uniforms()
+        {
+            uint32_t moduleIndex = 0;
+            for (size_t i = 0; i < effect->uniforms().size(); ++i)
+            {
+                if (effect->uniforms()[i].name == uniform.name)
+                {
+                    moduleIndex = static_cast<uint32_t>(i + 1);
+                    break;
+                }
+            }
+            if (ImGui::IsItemActive())
+                overlayActive = moduleIndex;
+            if (ImGui::IsItemHovered())
+                overlayHovered = moduleIndex;
         }
 
         // Set the tooltip if we have one
@@ -563,6 +624,10 @@ void vkShade::EffectsPanel::render_uniform_controls()
 
     if (!currentCategory.empty())
         ImGui::PopID();
+
+    if (effectMutable)
+        effectMutable->set_overlay_focus(overlayActive, overlayHovered);
+    runtime.set_overlay_focus(overlayActive, overlayHovered);
 }
 
 void vkShade::EffectsPanel::render_uniform_button(const Uniform& uniform)

@@ -1776,7 +1776,7 @@ bool reshade::runtime::load_effect(const std::filesystem::path &source_file, con
 		pp.add_macro_definition("BUFFER_COLOR_FORMAT", std::to_string(static_cast<uint32_t>(_effect_permutations[permutation_index].color_format)));
 		pp.add_macro_definition("BUFFER_COLOR_BIT_DEPTH", std::to_string(api::format_bit_depth(_effect_permutations[permutation_index].color_format)));
 
-		// GShade64.dll injects these for its shader pack. Without them, Heard / GShade
+		// GShade64.dll injects these for its shader pack. Without them, GShade
 		// presets skip TriDither paths and KeepUI branches — looks different from Firestorm+GShade.
 		pp.add_macro_definition("__GSHADE__", "1");
 		pp.add_macro_definition("GSHADE_DITHER", "1");

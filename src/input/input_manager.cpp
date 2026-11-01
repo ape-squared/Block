@@ -1,5 +1,10 @@
 #include "input_manager.hpp"
 #include "input/key_codes.hpp"
+#include "input/virtual_key_map.hpp"
+
+#include <algorithm>
+#include <cctype>
+#include <sstream>
 
 #include <magic_enum/magic_enum.hpp>
 #include "core/logger.hpp"
@@ -52,20 +57,20 @@ vkShade::InputManager::InputManager()
 
     auto& config = vkShade::Locator<vkShade::ConfigManager>::get().app();
 
+    if (auto processing = config.get<int32_t>("Input", "InputProcessing"))
+        m_inputProcessing = static_cast<InputProcessing>(std::clamp(*processing, 0, 2));
+
     {
         auto toggleEffects = config.get<std::string>("Input", "ToggleEffects");
-        std::string keyString = toggleEffects.value_or("");
-        auto keyEnum = magic_enum::enum_cast<vkShade::KeyCode>(keyString).value_or(DEFAULT_KEY_EFFECTS_TOGGLE);
-        bind_action("ToggleEffects", keyEnum);
+        parse_and_bind_action("ToggleEffects", toggleEffects.value_or(""),
+                              DEFAULT_KEY_EFFECTS_TOGGLE, false);
         config.on_changed("Input", "ToggleEffects").connect<&InputManager::on_keybind_changed>(this);
     }
 
     {
-        // Overlay default: Shift+B (requireShift=true)
         auto toggleGui = config.get<std::string>("Input", "ToggleGui");
-        std::string keyString = toggleGui.value_or("");
-        auto keyEnum = magic_enum::enum_cast<vkShade::KeyCode>(keyString).value_or(DEFAULT_KEY_GUI_TOGGLE);
-        bind_action("ToggleGui", keyEnum, true);
+        parse_and_bind_action("ToggleGui", toggleGui.value_or(""),
+                              DEFAULT_KEY_GUI_TOGGLE, true);
         config.on_changed("Input", "ToggleGui").connect<&InputManager::on_keybind_changed>(this);
     }
 }
@@ -91,13 +96,63 @@ vkShade::InputManager::~InputManager()
 #endif
 }
 
-void vkShade::InputManager::bind_action(const std::string& actionName, vkShade::KeyCode keyCode, bool requireShift)
+void vkShade::InputManager::parse_and_bind_action(const std::string& actionName,
+                                                  const std::string& binding,
+                                                  KeyCode defaultKey,
+                                                  bool defaultShift)
 {
-    m_actionBindings[actionName] = ActionBinding {keyCode, requireShift};
-    if (requireShift)
-        Logger::debug("Bound action '{}' to 'Shift+{}'", actionName, magic_enum::enum_name(keyCode));
-    else
-        Logger::debug("Bound action '{}' to '{}'", actionName, magic_enum::enum_name(keyCode));
+    bool requireShift = defaultShift;
+    bool requireCtrl = false;
+    bool requireAlt = false;
+    KeyCode key = defaultKey;
+
+    if (!binding.empty())
+    {
+        std::stringstream ss(binding);
+        std::string token;
+        while (std::getline(ss, token, '+'))
+        {
+            // trim
+            while (!token.empty() && std::isspace(static_cast<unsigned char>(token.front())))
+                token.erase(token.begin());
+            while (!token.empty() && std::isspace(static_cast<unsigned char>(token.back())))
+                token.pop_back();
+
+            std::string upper = token;
+            for (auto& c : upper)
+                c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+
+            if (upper == "SHIFT")
+                requireShift = true;
+            else if (upper == "CTRL" || upper == "CONTROL")
+                requireCtrl = true;
+            else if (upper == "ALT")
+                requireAlt = true;
+            else
+            {
+                auto keyEnum = magic_enum::enum_cast<KeyCode>(token);
+                if (!keyEnum && token.rfind("KEY_", 0) != 0)
+                    keyEnum = magic_enum::enum_cast<KeyCode>("KEY_" + upper);
+                if (keyEnum)
+                    key = *keyEnum;
+            }
+        }
+    }
+
+    bind_action(actionName, key, requireShift, requireCtrl, requireAlt);
+}
+
+void vkShade::InputManager::bind_action(const std::string& actionName, vkShade::KeyCode keyCode,
+                                        bool requireShift, bool requireCtrl, bool requireAlt)
+{
+    m_actionBindings[actionName] = ActionBinding {keyCode, requireShift, requireCtrl, requireAlt};
+
+    std::string label;
+    if (requireCtrl) label += "Ctrl+";
+    if (requireAlt) label += "Alt+";
+    if (requireShift) label += "Shift+";
+    label += magic_enum::enum_name(keyCode);
+    Logger::debug("Bound action '{}' to '{}'", actionName, label);
 }
 
 void vkShade::InputManager::handle_key_code_event(KeyCode key, bool pressed)
@@ -133,16 +188,23 @@ void vkShade::InputManager::handle_keyboard_event(const xkb_keycode_t& keycode, 
 
 void vkShade::InputManager::handle_mouse_button_event(MouseButton button, bool pressed)
 {
+    const auto index = static_cast<size_t>(button);
+    if (index < m_mouseButtonsDown.size())
+        m_mouseButtonsDown[index] = pressed;
     m_eventBus.enqueue(MouseButtonEvent{button, pressed});
 }
 
 void vkShade::InputManager::handle_mouse_motion_event(float x, float y)
 {
+    const glm::vec2 pos {x, y};
+    m_mouseDelta += pos - m_mousePos;
+    m_mousePos = pos;
     m_eventBus.enqueue(MouseMotionEvent{x, y});
 }
 
 void vkShade::InputManager::handle_mouse_wheel_event(float x, float y)
 {
+    m_mouseWheelDelta += y;
     m_eventBus.enqueue(MouseWheelEvent{x, y});
 }
 
@@ -162,6 +224,83 @@ bool vkShade::InputManager::is_action_just_released(const std::string& actionNam
 {
     auto it = m_actionBindings.find(actionName);
     return it != m_actionBindings.end() ? it->second.justReleased : false;
+}
+
+bool vkShade::InputManager::is_key_down(KeyCode key) const
+{
+    auto it = m_currentKeyStates.find(key);
+    return it != m_currentKeyStates.end() && it->second;
+}
+
+bool vkShade::InputManager::is_key_just_pressed(KeyCode key) const
+{
+    const bool current = is_key_down(key);
+    auto prev = m_previousKeyStates.find(key);
+    const bool previous = prev != m_previousKeyStates.end() && prev->second;
+    return current && !previous;
+}
+
+bool vkShade::InputManager::is_virtual_key_down(uint32_t vkey) const
+{
+    if (vkey >= 256)
+        return false;
+    return is_key_down(keycode_from_virtual_key(static_cast<int>(vkey)));
+}
+
+bool vkShade::InputManager::is_virtual_key_just_pressed(uint32_t vkey) const
+{
+    if (vkey >= 256)
+        return false;
+    return is_key_just_pressed(keycode_from_virtual_key(static_cast<int>(vkey)));
+}
+
+bool vkShade::InputManager::is_mouse_down(int button) const
+{
+    if (button < 0 || button >= static_cast<int>(m_mouseButtonsDown.size()))
+        return false;
+    return m_mouseButtonsDown[static_cast<size_t>(button)];
+}
+
+bool vkShade::InputManager::is_mouse_just_pressed(int button) const
+{
+    if (button < 0 || button >= static_cast<int>(m_mouseButtonsPressed.size()))
+        return false;
+    return m_mouseButtonsPressed[static_cast<size_t>(button)];
+}
+
+bool vkShade::InputManager::blocking_mouse() const
+{
+    switch (m_inputProcessing)
+    {
+        case InputProcessing::Passthrough:
+            return false;
+        case InputProcessing::BlockWhileOverlayOpen:
+            return m_overlayVisible;
+        case InputProcessing::BlockWhenWanted:
+        default:
+            return m_overlayVisible && m_wantMouse;
+    }
+}
+
+bool vkShade::InputManager::blocking_keyboard() const
+{
+    switch (m_inputProcessing)
+    {
+        case InputProcessing::Passthrough:
+            return false;
+        case InputProcessing::BlockWhileOverlayOpen:
+            return m_overlayVisible;
+        case InputProcessing::BlockWhenWanted:
+        default:
+            return m_overlayVisible && m_wantKeyboard;
+    }
+}
+
+void vkShade::InputManager::set_imgui_capture(bool wantMouse, bool wantKeyboard, bool wantTextInput)
+{
+    m_wantMouse = wantMouse;
+    m_wantKeyboard = wantKeyboard;
+    m_wantTextInput = wantTextInput;
 }
 
 #if !defined(_WIN32)
@@ -275,46 +414,59 @@ vkShade::KeyCode vkShade::InputManager::map_key(xkb_keysym_t keysym)
 
 void vkShade::InputManager::on_keybind_changed(const std::string& configKey, std::string enumString)
 {
-    auto enumResult = magic_enum::enum_cast<KeyCode>(enumString);
-
-    vkShade::KeyCode keyEnum = KeyCode::KEY_UNKNOWN;
     if (configKey == "ToggleEffects")
     {
-        keyEnum = enumResult.value_or(DEFAULT_KEY_EFFECTS_TOGGLE);
-        bind_action(configKey, keyEnum, false);
+        parse_and_bind_action(configKey, enumString, DEFAULT_KEY_EFFECTS_TOGGLE, false);
         return;
     }
     if (configKey == "ToggleGui")
     {
-        keyEnum = enumResult.value_or(DEFAULT_KEY_GUI_TOGGLE);
-        bind_action(configKey, keyEnum, true); // overlay: Shift+key
+        parse_and_bind_action(configKey, enumString, DEFAULT_KEY_GUI_TOGGLE, true);
         return;
     }
 
-    bind_action(configKey, keyEnum, false);
+    parse_and_bind_action(configKey, enumString, KeyCode::KEY_UNKNOWN, false);
 }
 
 void vkShade::InputManager::update()
 {
+    m_mouseDelta = {0.0f, 0.0f};
+    m_mouseWheelDelta = 0.0f;
+
     this->process_events();
 
+    for (size_t i = 0; i < m_mouseButtonsDown.size(); ++i)
+    {
+        m_mouseButtonsPressed[i] = m_mouseButtonsDown[i] && !m_mouseButtonsPrev[i];
+        m_mouseButtonsPrev[i] = m_mouseButtonsDown[i];
+    }
+
     const bool shiftDown =
-        m_currentKeyStates[KeyCode::KEY_LSHIFT] || m_currentKeyStates[KeyCode::KEY_RSHIFT];
+        is_key_down(KeyCode::KEY_LSHIFT) || is_key_down(KeyCode::KEY_RSHIFT);
+    const bool ctrlDown =
+        is_key_down(KeyCode::KEY_LCTRL) || is_key_down(KeyCode::KEY_RCTRL);
+    const bool altDown =
+        is_key_down(KeyCode::KEY_LALT) || is_key_down(KeyCode::KEY_RALT);
 
     for (auto& [name, binding] : m_actionBindings)
     {
-        bool keyDown = m_currentKeyStates[binding.keyCode];
+        bool keyDown = is_key_down(binding.keyCode);
         if (binding.requireShift)
             keyDown = keyDown && shiftDown;
+        if (binding.requireCtrl)
+            keyDown = keyDown && ctrlDown;
+        if (binding.requireAlt)
+            keyDown = keyDown && altDown;
 
-        // Track combo state in previous map using the action's key slot when no shift,
-        // and a synthetic previous via binding.pressed for shift combos.
+        // Suppress hotkeys while typing into the overlay
+        if (m_wantTextInput && name != "ToggleGui")
+            keyDown = false;
+
         bool previous = binding.pressed;
         binding.justPressed = keyDown && !previous;
         binding.justReleased = !keyDown && previous;
         binding.pressed = keyDown;
-
-        if (!binding.requireShift)
-            m_previousKeyStates[binding.keyCode] = m_currentKeyStates[binding.keyCode];
     }
+
+    m_previousKeyStates = m_currentKeyStates;
 }

@@ -2,9 +2,12 @@
 
 #include <filesystem>
 #include <memory>
+#include <optional>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 #include <glm/glm.hpp>
-#include <unordered_map>
 #include <vulkan/vulkan_core.h>
 
 #include "core/logger.hpp"
@@ -35,15 +38,41 @@ namespace vkShade
     class ReshadeEffect : public VulkanObject
     {
     public:
+        struct TechniqueInfo
+        {
+            std::string name;
+            std::string uiLabel;
+            std::string uiTooltip;
+            bool hidden {false};
+            bool enabled {true};
+        };
+
         ReshadeEffect(VulkanDevice& device, SwapchainInfo swapchainInfo, std::filesystem::path effectPath);
         ~ReshadeEffect() override;
 
-        void apply(VkCommandBuffer cmd, VulkanImage& outputImage);
+        // Apply all enabled techniques. Returns true if the backbuffer was written.
+        bool apply(VkCommandBuffer cmd, VulkanImage& outputImage);
+        // Apply a single technique by index. Returns true if backbuffer was written.
+        bool apply_technique(VkCommandBuffer cmd, VulkanImage& outputImage, size_t techniqueIndex);
+
         void bind_input(VulkanImage& colorImage, VulkanImage& depthImage);
+        void bind_input_technique(VulkanImage& colorImage, VulkanImage& depthImage, size_t techniqueIndex);
         void update(const ReshadeFrameState& frame);
 
-        std::string name() { return m_fileName; }
-        std::vector<Uniform> uniforms() const { return m_uniforms; }
+        std::string name() const { return m_fileName; }
+        const std::vector<Uniform>& uniforms() const { return m_uniforms; }
+        const std::vector<TechniqueInfo>& techniques() const { return m_techniqueInfos; }
+        size_t technique_count() const { return m_techniques.size(); }
+        void set_technique_enabled(size_t index, bool enabled);
+        bool technique_enabled(size_t index) const;
+
+        const std::vector<std::filesystem::path>& source_files() const { return m_sourceFiles; }
+
+        void set_overlay_focus(uint32_t active, uint32_t hovered);
+        uint32_t overlay_active() const { return m_overlayActive; }
+        uint32_t overlay_hovered() const { return m_overlayHovered; }
+
+        ReshadeEffect* mutable_self() { return this; }
 
     private:
         struct Pass
@@ -55,6 +84,14 @@ namespace vkShade
 
             std::shared_ptr<ShaderModule> vertexShader;
             std::shared_ptr<ShaderModule> fragmentShader;
+            bool generateMipmaps {false};
+        };
+
+        struct Technique
+        {
+            TechniqueInfo info;
+            std::vector<Pass> passes;
+            size_t moduleIndex {0};
         };
 
         std::string   m_fileName;
@@ -64,16 +101,21 @@ namespace vkShade
         std::unique_ptr<VulkanBuffer> m_uniformBuffer {nullptr};
         std::vector<Uniform> m_uniforms;
         std::vector<std::unique_ptr<ReshadeUniform>> m_builtinUniforms;
+        std::vector<TechniqueInfo> m_techniqueInfos;
+        std::vector<std::filesystem::path> m_sourceFiles;
 
-        VkDescriptorPool m_descriptorPool;
-        VkDescriptorSetLayout m_uniformSetLayout;
-        VkDescriptorSet m_uniformSet;
+        VkDescriptorPool m_descriptorPool {VK_NULL_HANDLE};
+        VkDescriptorSetLayout m_uniformSetLayout {VK_NULL_HANDLE};
+        VkDescriptorSet m_uniformSet {VK_NULL_HANDLE};
 
         std::unordered_map<std::string, std::unique_ptr<VulkanImage>> m_textures;
         std::vector<std::unique_ptr<VulkanSampler>> m_samplers;
         std::unique_ptr<VulkanImage> m_stencilBuffer;
 
-        std::vector<Pass> m_passes;
+        std::vector<Technique> m_techniques;
+
+        uint32_t m_overlayActive {0};
+        uint32_t m_overlayHovered {0};
 
         bool compile(std::filesystem::path filePath);
 
@@ -91,15 +133,13 @@ namespace vkShade
         template<typename T>
         void on_uniform_changed(const std::string& name, T value)
         {
-            // Search for the uniform by name
-            const Uniform* uniform = nullptr;
-            for (auto& u : m_uniforms)
+            const Uniform* uniform = find_uniform(name);
+            if (!uniform)
             {
-                if (u.name == name)
-                    uniform = &u;
+                Logger::error("Unknown uniform '{}'", name);
+                return;
             }
 
-            // Make sure the type is correct
             if (uniform->baseType != UniformTraits<T>::base ||
                 uniform->components != UniformTraits<T>::components)
             {
@@ -107,14 +147,12 @@ namespace vkShade
                 return;
             }
 
-            // Make sure the buffer is good
             if (!m_uniformBuffer)
             {
                 Logger::error("Uniform buffer is not valid: {}", m_fileName);
                 return;
             }
 
-            // Write T into the buffer at the specified offset
             if (!m_uniformBuffer->write(&value, sizeof(T), uniform->offset))
             {
                 Logger::error("Failed to write uniform '{}'", name);
@@ -127,6 +165,8 @@ namespace vkShade
         void reflect_pipeline();
         void reflect_samplers();
         void reflect_uniforms();
+
+        bool apply_technique_internal(VkCommandBuffer cmd, VulkanImage& outputImage, Technique& technique);
 
         static VkBlendFactor       convert_blend_factor(reshadefx::blend_factor blendFactor);
         static VkBlendOp           convert_blend_op(reshadefx::blend_op blendOp);

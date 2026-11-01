@@ -16,7 +16,7 @@ namespace vkShade
     class GuiManager
     {
     public:
-        GuiManager(VulkanDevice deviceContext, VkFormat swapchainFormat);
+        GuiManager(VulkanDevice& deviceContext, VkFormat swapchainFormat);
         ~GuiManager();
 
         // FIXME: These are useless indirection

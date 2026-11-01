@@ -1,4 +1,5 @@
 hooks_source = [
+  'hooks_depth.cpp',
   'hooks_device.cpp',
   'hooks_entrypoints.cpp',
   'hooks_instance.cpp',
