@@ -1,17 +1,14 @@
 # Block website
 
-Static site for GitHub Pages: https://ape-squared.github.io/Block/
-
-Clean URLs use folders (`/download/`, `/docs/`, …). Old `*.html` paths redirect.
+Static site for GitHub Pages: https://ape-squared.github.io/Block-GPPI/
 
 | Path | Purpose |
-|------|---------|
+|---|---|
 | `/` | Product landing |
-| `/download/` | Get started — Windows zip / Setup |
-| `/docs/` | Doc index + links into the repo |
-| `/contribute/` | Contributor guide (human-only) |
+| `/download/` | Windows zip + Setup |
+| `/docs/` | Doc index |
+| `/contribute/` | Contribution overview |
 | `/ai/` | AI policy |
 | `/latest.json` | OTA channel for Setup + overlay |
-| `styles.css` / `site.js` | Shared look and motion |
 
-Visual form follows `design/web-mockup/`. Deploy: push to `main` (workflow `pages.yml`).
+Asset and nav links are **relative** so CSS/JS keep working if the GitHub repo (and Pages base path) is renamed.

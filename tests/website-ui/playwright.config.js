@@ -2,7 +2,7 @@
 const { defineConfig } = require("@playwright/test");
 
 const port = Number(process.env.BLOCK_UI_PORT || 4173);
-const baseURL = process.env.BLOCK_UI_BASE || `http://127.0.0.1:${port}/Block/`;
+const baseURL = process.env.BLOCK_UI_BASE || `http://127.0.0.1:${port}/`;
 
 module.exports = defineConfig({
   testDir: "./specs",

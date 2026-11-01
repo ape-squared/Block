@@ -33,7 +33,7 @@ test.describe("Block website UI", () => {
     const dl = page.locator("[data-latest-download]");
     await expect(dl).toBeVisible();
     const href = await dl.getAttribute("href");
-    expect(href).toContain("github.com/ape-squared/Block/releases/download/");
+    expect(href).toMatch(/github\.com\/ape-squared\/Block(?:-GPPI)?\/releases\/download\//);
     expect(href).toContain(latest.tag);
     expect(href).toMatch(/Block-.*-windows-x64\.zip/);
   });
@@ -63,10 +63,14 @@ test.describe("Block website UI", () => {
   });
 
   test("styles and site.js load", async ({ page }) => {
-    const css = page.waitForResponse((r) => r.url().includes("/Block/styles.css") && r.ok());
-    const js = page.waitForResponse((r) => r.url().includes("/Block/site.js") && r.ok());
+    const css = page.waitForResponse((r) => /styles\.css/.test(r.url()) && r.ok());
+    const js = page.waitForResponse((r) => /site\.js/.test(r.url()) && r.ok());
     await page.goto("./");
     await css;
     await js;
+    const color = await page.locator("body").evaluate((el) => getComputedStyle(el).backgroundColor);
+    // dark theme — not browser default white
+    expect(color).not.toMatch(/^rgb\(255,\s*255,\s*255\)$/);
   });
 });
+

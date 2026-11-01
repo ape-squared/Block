@@ -1,5 +1,5 @@
 /**
- * Serve website/ under /Block/ so absolute paths (/Block/styles.css, latest.json) match Pages.
+ * Serve website/ at site root (relative asset paths — works with any Pages base name).
  * Usage: node serve.js [port]
  */
 const http = require("http");
@@ -8,7 +8,6 @@ const path = require("path");
 
 const port = Number(process.argv[2] || 4173);
 const root = path.resolve(__dirname, "../../website");
-const prefix = "/Block";
 
 const types = {
   ".html": "text/html; charset=utf-8",
@@ -32,14 +31,7 @@ function send(res, status, body, type) {
 
 const server = http.createServer((req, res) => {
   let urlPath = decodeURIComponent((req.url || "/").split("?")[0]);
-  if (urlPath === "/" || urlPath === "") {
-    res.writeHead(302, { Location: prefix + "/" });
-    return res.end();
-  }
-  if (!urlPath.startsWith(prefix)) {
-    return send(res, 404, "Not found (expected /Block/…)");
-  }
-  let rel = urlPath.slice(prefix.length) || "/";
+  let rel = urlPath || "/";
   if (rel.endsWith("/")) rel += "index.html";
   const file = path.normalize(path.join(root, rel));
   if (!file.startsWith(root)) {
@@ -55,5 +47,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(port, "127.0.0.1", () => {
-  console.log(`Block website UI server: http://127.0.0.1:${port}${prefix}/`);
+  console.log(`Block website UI server: http://127.0.0.1:${port}/`);
 });

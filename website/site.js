@@ -44,11 +44,15 @@
     });
   }
 
-  // latest.json → download CTA
+  // latest.json → download CTA (resolve next to stylesheet so any Pages base works)
   const verEl = document.querySelector("[data-latest-version]");
   const dlEl = document.querySelector("[data-latest-download]");
   if (verEl || dlEl) {
-    fetch("/Block/latest.json", { cache: "no-store" })
+    const css = document.querySelector('link[rel="stylesheet"]');
+    const latestUrl = css
+      ? new URL("latest.json", css.href).href
+      : new URL("latest.json", location.href).href;
+    fetch(latestUrl, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!data) return;
@@ -56,7 +60,7 @@
         const version = data.version || String(tag).replace(/^v/, "");
         const zipName = "Block-" + version + "-windows-x64.zip";
         const assetUrl =
-          "https://github.com/ape-squared/Block/releases/download/" +
+          "https://github.com/ape-squared/Block-GPPI/releases/download/" +
           encodeURIComponent(tag) +
           "/" +
           encodeURIComponent(zipName);

@@ -7,7 +7,7 @@
 **Build your look, block by block.**  
 Post-processing for Second Life viewers (OpenGL) on Windows, plus an experimental Vulkan layer on Windows/Linux — open source, human-made.
 
-[![Website](https://img.shields.io/badge/website-ape--squared.github.io%2FBlock-D4FF3F?labelColor=0B0C0E&color=D4FF3F)](https://ape-squared.github.io/Block/)
+[![Website](https://img.shields.io/badge/website-ape--squared.github.io%2FBlock--GPPI-D4FF3F?labelColor=0B0C0E&color=D4FF3F)](https://ape-squared.github.io/Block-GPPI/)
 [![Release](https://img.shields.io/github/v/release/ape-squared/Block?label=release&labelColor=0B0C0E&color=5BE3E8)](https://github.com/ape-squared/Block/releases/latest)
 [![License: BSD-2-Clause](https://img.shields.io/badge/license-BSD--2--Clause-4F46E5?labelColor=0B0C0E)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20·%20Linux-070B1F?labelColor=0B0C0E)](#using-block)
@@ -139,7 +139,7 @@ When a new version ships:
 2. Tag `vX.Y.Z` — CI writes [`website/latest.json`](website/latest.json) and opens a GitHub Release  
 3. Setup and the overlay (`Shift`+`B`) show **There's a new Block update available** with a link to Releases  
 
-Channel: https://ape-squared.github.io/Block/latest.json
+Channel: https://ape-squared.github.io/Block-GPPI/latest.json
 
 ## Contributing
 

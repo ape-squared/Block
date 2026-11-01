@@ -109,7 +109,7 @@ jobs:
             echo
             echo "---"
             echo
-            echo "Full notes: \`CHANGELOG.md\`. OTA channel: https://ape-squared.github.io/Block/latest.json"
+            echo "Full notes: \`CHANGELOG.md\`. OTA channel: https://ape-squared.github.io/Block-GPPI/latest.json"
             echo
             echo "Viewers: \`docs/VIEWERS.md\` · Platforms: \`docs/PLATFORMS.md\` · AI policy: \`docs/AI_POLICY.md\`"
           } > release_body.md

@@ -219,7 +219,7 @@ feature bumps **minor**; a fix bumps **patch**.
 2. Tag `vX.Y.Z` and push the tag  
 3. CI refreshes [`website/latest.json`](website/latest.json) and opens a GitHub Release  
 4. Setup and the overlay (`Shift`+`B`) pick up the banner from  
-   https://ape-squared.github.io/Block/latest.json  
+   https://ape-squared.github.io/Block-GPPI/latest.json  
 
 Do not publish a tag whose `block_version.h` still says the previous number.
 
