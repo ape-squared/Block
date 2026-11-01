@@ -120,3 +120,34 @@ jobs:
           test -f website/download/index.html
           test -f website/ai/index.html
           echo OK
+
+  website-ui:
+    name: Website UI (Playwright)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tests/website-ui
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: tests/website-ui/package.json
+
+      - name: Install + run Playwright
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+          npm test
+
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-ui-playwright
+          path: |
+            tests/website-ui/test-results
+            tests/website-ui/playwright-report
+          if-no-files-found: ignore

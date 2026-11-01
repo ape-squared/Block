@@ -1,0 +1,12 @@
+{
+  "name": "block-website-ui",
+  "private": true,
+  "description": "Playwright smoke tests for Block GitHub Pages (PR CI)",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

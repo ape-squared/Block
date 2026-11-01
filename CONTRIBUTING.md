@@ -136,10 +136,10 @@ Minimum bar depends on what you touched:
 
 | You changed… | Please verify |
 |--------------|----------------|
-| OpenGL injector / overlay | Build → install with Setup (or copy `opengl32.dll`) → launch Firestorm → **`Shift`+`B`** → exercise the path you changed |
-| Setup | Run `BlockSetup.exe` against a throwaway or backup viewer folder; read the install log lines |
+| OpenGL injector / overlay | Build → install with Setup (or copy `opengl32.dll`) → launch Firestorm → **`Shift`+`B`** → exercise the path you changed (**not covered by CI UI tests**) |
+| Setup | Run `BlockSetup.exe` against a throwaway or backup viewer folder; read the install log lines (**WinForms UI not in PR CI yet**) |
 | Vulkan layer | `vkcube` (or your test app) with the env vars above |
-| Docs / website only | Preview Markdown / open `website/index.html` locally; no viewer required |
+| Docs / website | PR CI runs Playwright against `website/` (see `tests/website-ui/`); also open pages locally |
 | OTA / version | Bump both `VERSION` and `block_version.h`; confirm banner logic still makes sense |
 
 **Logs:** paste `ReShade.log` (OpenGL) or your layer log as **text** in the PR or issue. Prefer that over screenshots of screenshots.
@@ -171,8 +171,18 @@ Every pull request runs [`.github/workflows/pr-checks.yml`](.github/workflows/pr
 | AI heuristic scan | Flags common LLM watermarks in added lines |
 | Linux Vulkan build | Meson compile of the Vulkan layer |
 | Doc path sanity | Required docs / site files still exist |
+| Website UI (Playwright) | Smoke-tests home, download/`latest.json` CTA, docs/contribute/ai, mobile nav |
 
-A green check does **not** replace “I ran Shift+B on my viewer.”
+A green check does **not** replace “I ran Shift+B on my viewer.” Overlay and Setup UI are still manual.
+
+**Local website UI tests** (optional, before opening a docs/site PR):
+
+```bash
+cd tests/website-ui
+npm install
+npx playwright install chromium
+npm test
+```
 
 ### Style
 

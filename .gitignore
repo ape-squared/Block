@@ -54,3 +54,10 @@ third_party/reshade/.git.bak-before-monorepo/
 
 tools/setup/obj/
 
+
+# Website UI (Playwright)
+tests/website-ui/node_modules/
+tests/website-ui/test-results/
+tests/website-ui/playwright-report/
+tests/website-ui/blob-report/
+tests/website-ui/playwright/.cache/

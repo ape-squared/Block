@@ -21,8 +21,9 @@ Closes #
 
 ## Tests
 
-- [ ] Built locally (`tools/build_reshade_block.ps1` and/or `tools/build_windows.bat`)
-- [ ] Validated in the viewer or app: <!-- Shift+B, preset, vkcube, … -->
+- [ ] Built locally (`tools/build_reshade_block.ps1` and/or `tools/build_windows.bat`) — or N/A for docs-only
+- [ ] Validated in the viewer or app: <!-- Shift+B, preset, vkcube, … — or N/A -->
+- [ ] Website / docs: local preview and/or `cd tests/website-ui && npm install && npm test` (CI runs this too)
 - [ ] I wrote this patch myself (no AI-generated code or docs) — see `docs/AI_POLICY.md`
 - [ ] I did not claim untested viewer support
 - [ ] I avoided committing build outputs / logs
