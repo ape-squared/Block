@@ -1,0 +1,276 @@
+#include "gui_manager.hpp"
+
+#include <imgui.h>
+#include <imgui_impl_vulkan.h>
+#include <imgui_internal.h>
+#include <vulkan/vulkan_core.h>
+
+#include "config/config_manager.hpp"
+#include "core/service_locator.hpp"
+#include "core/logger.hpp"
+#include "hooks/hooks.hpp"
+#include "input/input_events.hpp"
+#include "windows/main_window.hpp"
+#include "vk/macros.hpp"
+#include "gui_style.hpp"
+#include "input_helpers.hpp"
+#include "fonts/inter_regular.hpp"
+#include "fonts/meslo_lgs_regular.hpp"
+
+vkShade::GuiManager::GuiManager(VulkanDevice deviceContext, VkFormat swapchainFormat)
+{
+    m_device = deviceContext.handle;
+
+	// 1: Create descriptor pool for ImGui.
+	// This pool is very oversized, but it's copied from ImGui demo itself.
+	VkDescriptorPoolSize pool_sizes[] = { { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 } };
+
+	VkDescriptorPoolCreateInfo pool_info = {};
+	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+	pool_info.maxSets = 1000;
+	pool_info.poolSizeCount = (uint32_t)std::size(pool_sizes);
+	pool_info.pPoolSizes = pool_sizes;
+
+	VK_CHECK(deviceContext.dispatch.CreateDescriptorPool(m_device, &pool_info, nullptr, &m_descriptorPool));
+
+	// 2: Initialize ImGui library.
+
+	// This initializes the core structures of ImGui.
+	ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+	// This initializes ImGui for Vulkan.
+	ImGui_ImplVulkan_InitInfo init_info = {};
+	init_info.Instance = deviceContext.instance;
+	init_info.PhysicalDevice = deviceContext.physicalDevice;
+	init_info.Device = deviceContext.handle;
+	init_info.Queue = deviceContext.queue;
+    init_info.QueueFamily = deviceContext.queueFamilyIndex;
+	init_info.DescriptorPool = m_descriptorPool;
+	init_info.MinImageCount = 3;
+	init_info.ImageCount = 3;
+	init_info.UseDynamicRendering = true;
+
+    // Custom loader that uses the dispatch table
+    ImGui_ImplVulkan_LoadFunctions([](const char* function_name, void* user_data) -> PFN_vkVoidFunction
+    {
+        VulkanDevice* ctx = (VulkanDevice*)user_data;
+        auto& instance = get_instance_from_handle(ctx->instance);
+
+        // Try the device table first (most functions are device-level)
+        PFN_vkVoidFunction func = vkShade_GetDeviceProcAddr(ctx->handle, function_name);
+        if (func)
+        {
+            Logger::trace("[ImGui] Loaded {} from device table:  {}", function_name, (void*)func);
+            return func;
+        }
+
+        // Fall back to the instance table
+        func = vkShade_GetInstanceProcAddr(instance.handle, function_name);
+        if (func)
+        {
+            Logger::trace("[ImGui] Loaded {} from instance table: {}", function_name, (void*)func);
+            return func;
+        }
+
+        Logger::error("[ImGui] Failed to load function: {}", function_name);
+        return nullptr;
+    }, &deviceContext);
+
+	// Dynamic rendering parameters for ImGui to use.
+	init_info.PipelineRenderingCreateInfo = {.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO};
+	init_info.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
+	init_info.PipelineRenderingCreateInfo.pColorAttachmentFormats = &swapchainFormat;
+
+	init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+
+	ImGui_ImplVulkan_Init(&init_info);
+
+    // Load font and subscribe to config changes
+    auto& config = vkShade::Locator<vkShade::ConfigManager>::get().app();
+    uint32_t fontSize = config.get<uint32_t>("UI", "FontSize").value_or(14u);
+    this->rebuild_fonts(fontSize);
+    config.on_changed("UI", "FontSize").connect<&GuiManager::on_font_size_changed>(this);
+
+    // Apply custom style
+    UIStyle::ApplyStyle();
+
+    // Subscribe to input events
+    auto& eventBus = Locator<EventBus>::get();
+    eventBus.sink<KeyboardEvent>().connect<&GuiManager::on_keyboard_event>(this);
+    eventBus.sink<TextInputEvent>().connect<&GuiManager::on_text_input_event>(this);
+    eventBus.sink<MouseButtonEvent>().connect<&GuiManager::on_mouse_button_event>(this);
+    eventBus.sink<MouseMotionEvent>().connect<&GuiManager::on_mouse_motion_event>(this);
+    eventBus.sink<MouseWheelEvent>().connect<&GuiManager::on_mouse_wheel_event>(this);
+}
+
+vkShade::GuiManager::~GuiManager()
+{
+    // Unsubscribe from input events
+    auto& eventBus = Locator<EventBus>::get();
+    eventBus.sink<KeyboardEvent>().disconnect<&GuiManager::on_keyboard_event>(this);
+    eventBus.sink<TextInputEvent>().disconnect<&GuiManager::on_text_input_event>(this);
+    eventBus.sink<MouseButtonEvent>().disconnect<&GuiManager::on_mouse_button_event>(this);
+    eventBus.sink<MouseMotionEvent>().disconnect<&GuiManager::on_mouse_motion_event>(this);
+    eventBus.sink<MouseWheelEvent>().disconnect<&GuiManager::on_mouse_wheel_event>(this);
+
+    ImGui_ImplVulkan_Shutdown();
+    auto& thisDevice = get_device_from_handle(m_device);
+    thisDevice.dispatch.DestroyDescriptorPool(m_device, m_descriptorPool, nullptr);
+}
+
+void vkShade::GuiManager::draw_cursor()
+{
+    // Draw a small, circular cursor. Highly visible.
+    // Black, with white outline, and a red center dot.
+    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    ImVec2 pos = ImGui::GetMousePos();
+    drawList->AddCircleFilled(pos, 4.0f, IM_COL32(0, 0, 0, 255));
+    drawList->AddCircle(pos, 5.0f, IM_COL32(255, 255, 255, 255), 0, 1.0f);
+    drawList->AddCircleFilled(pos, 1.5f, IM_COL32(255, 0, 0, 255));
+}
+
+void vkShade::GuiManager::on_font_size_changed(const std::string& key, uint32_t value)
+{
+    this->rebuild_fonts(value);
+}
+
+void vkShade::GuiManager::on_keyboard_event(const KeyboardEvent& event)
+{
+    ImGui::GetIO().AddKeyEvent(to_imgui_key(event.keyCode), event.pressed);
+}
+
+void vkShade::GuiManager::on_mouse_button_event(const MouseButtonEvent& event)
+{
+    ImGui::GetIO().AddMouseButtonEvent(static_cast<int32_t>(event.button), event.pressed);
+}
+
+void vkShade::GuiManager::on_mouse_motion_event(const MouseMotionEvent& event)
+{
+    ImGui::GetIO().AddMousePosEvent(event.x, event.y);
+}
+
+void vkShade::GuiManager::on_mouse_wheel_event(const MouseWheelEvent& event)
+{
+    ImGui::GetIO().AddMouseWheelEvent(event.x, event.y);
+}
+
+void vkShade::GuiManager::on_text_input_event(const TextInputEvent& event)
+{
+    ImGui::GetIO().AddInputCharactersUTF8(event.text.c_str());
+}
+
+void vkShade::GuiManager::rebuild_fonts(const uint32_t size)
+{
+    ImGuiIO& io = ImGui::GetIO();
+
+    io.Fonts->Clear();
+
+    ImFontConfig fontConfig;
+    fontConfig.OversampleH = 3;
+    fontConfig.OversampleV = 3;
+    fontConfig.PixelSnapH = true;
+
+    ImFont* regularFont = io.Fonts->AddFontFromMemoryCompressedBase85TTF(
+        InterRegular_compressed_data_base85,
+        static_cast<float>(size),
+        &fontConfig
+    );
+
+    UIStyle::MonoFont = io.Fonts->AddFontFromMemoryCompressedBase85TTF(
+        MesloLGSRegular_compressed_data_base85,
+        static_cast<float>(size),
+        &fontConfig
+    );
+
+    io.FontDefault = regularFont;
+
+    ImGui_ImplVulkan_DestroyFontsTexture();
+    ImGui_ImplVulkan_CreateFontsTexture();
+}
+
+void vkShade::GuiManager::setup_dockspace()
+{
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->Pos);
+    ImGui::SetNextWindowSize(viewport->Size);
+    ImGui::SetNextWindowViewport(viewport->ID);
+
+    ImGuiWindowFlags dockspaceFlags =
+        ImGuiWindowFlags_NoDocking |
+        ImGuiWindowFlags_NoTitleBar |
+        ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoBringToFrontOnFocus |
+        ImGuiWindowFlags_NoNavFocus |
+        ImGuiWindowFlags_NoBackground;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::Begin("DockSpace", nullptr, dockspaceFlags);
+    ImGui::PopStyleVar(3);
+
+    ImGuiID dockspaceId = ImGui::DockSpace(ImGui::GetID("MainDockSpace"), ImVec2(0, 0), ImGuiDockNodeFlags_PassthruCentralNode);
+
+    if (!m_dockspaceInitialized)
+    {
+        m_dockspaceInitialized = true;
+
+        ImGuiID dockLeft, dockMain;
+        ImGui::DockBuilderRemoveNode(dockspaceId);
+        ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
+        ImGui::DockBuilderSetNodeSize(dockspaceId, viewport->Size);
+
+        // Prevent docking to root (viewport) node
+        ImGui::DockBuilderGetNode(dockspaceId)->LocalFlags |= ImGuiDockNodeFlags_NoDockingOverMe;
+
+        ImGui::DockBuilderSplitNode(dockspaceId, ImGuiDir_Left, 0.30f, &dockLeft, &dockMain);
+
+        ImGui::DockBuilderDockWindow("vkShade", dockLeft);
+
+        ImGui::DockBuilderFinish(dockspaceId);
+    }
+
+    ImGui::End();
+}
+
+void vkShade::GuiManager::update(float deltaTime, VkExtent2D swapchainExtent)
+{
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2((float)swapchainExtent.width, (float)swapchainExtent.height);
+    io.DeltaTime = deltaTime;
+
+    // Draw the GUI
+    ImGui::NewFrame();
+
+
+    if (m_mainWindow.visible())
+    {
+        setup_dockspace();
+
+        m_mainWindow.render();
+
+        // Last: Draw the cursor on top of everything
+        this->draw_cursor();
+    }
+
+    ImGui::Render();
+}

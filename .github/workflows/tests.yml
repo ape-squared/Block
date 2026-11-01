@@ -1,0 +1,14 @@
+name: Tests
+
+# Windows-first project; full CI matrix TBD. Manual for now so PRs are not red noise.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Enable real Windows CI when ready."

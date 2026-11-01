@@ -1,0 +1,72 @@
+<Application x:Class="Block.Setup.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml">
+  <Application.Resources>
+    <!-- Block brand tokens -->
+    <SolidColorBrush x:Key="Signal" Color="#FFD4FF3F"/>
+    <SolidColorBrush x:Key="Surface0" Color="#FF0B0C0E"/>
+    <SolidColorBrush x:Key="Surface1" Color="#FF131417"/>
+    <SolidColorBrush x:Key="Surface2" Color="#FF1B1D21"/>
+    <SolidColorBrush x:Key="Surface3" Color="#FF25282D"/>
+    <SolidColorBrush x:Key="Line" Color="#FF2E3238"/>
+    <SolidColorBrush x:Key="Ink" Color="#FFECEEF0"/>
+    <SolidColorBrush x:Key="InkMuted" Color="#FF9AA0A8"/>
+    <SolidColorBrush x:Key="Data" Color="#FF5BE3E8"/>
+    <SolidColorBrush x:Key="Ok" Color="#FF3DDC97"/>
+
+    <Style x:Key="GhostBtn" TargetType="Button">
+      <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+      <Setter Property="FontFamily" Value="Segoe UI"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Padding" Value="14,9"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="bd" Background="{StaticResource Surface2}" BorderBrush="{StaticResource Line}"
+                    BorderThickness="1" CornerRadius="6" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="bd" Property="Background" Value="{StaticResource Surface3}"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="bd" Property="Opacity" Value="0.4"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="SignalBtn" TargetType="Button">
+      <Setter Property="Foreground" Value="#FF0B0C0E"/>
+      <Setter Property="FontFamily" Value="Segoe UI"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Padding" Value="14,9"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="bd" Background="{StaticResource Signal}" BorderBrush="{StaticResource Signal}"
+                    BorderThickness="1" CornerRadius="6" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="bd" Property="Opacity" Value="0.92"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="bd" Property="Opacity" Value="0.4"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </Application.Resources>
+</Application>

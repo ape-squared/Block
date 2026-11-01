@@ -1,0 +1,12 @@
+signal     #D4FF3F
+surface-0  #0B0C0E
+surface-1  #131417
+surface-2  #1B1D21
+surface-3  #25282D
+line       #2E3238
+ink        #ECEEF0
+ink-muted  #9AA0A8
+data       #5BE3E8
+ok         #3DDC97
+warn       #FFB547
+error      #FF6B6B

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Block — in-game HUD and toasts</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+button:focus-visible{outline: 2px solid #D4FF3F; outline-offset: 2px}
+</style>
+</helmet>
+<div style="width: 1920px; height: 1080px; box-sizing: border-box; background: #0B0C0E; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; color: #ECEEF0; position: relative; overflow: hidden">
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" style="position: absolute; inset: 0" aria-hidden="true">
+<rect width="1920" height="1080" fill="#2A3346"/>
+<rect y="0" width="1920" height="360" fill="#33405A"/>
+<circle cx="1420" cy="430" r="120" fill="#E9C9A2"/>
+<circle cx="1420" cy="430" r="190" fill="#E9C9A2" opacity=".12"/>
+<polygon points="0,640 260,470 520,600 760,430 1040,620 1300,500 1560,640 1920,480 1920,1080 0,1080" fill="#1E2535"/>
+<polygon points="0,760 340,620 700,740 1100,640 1500,760 1920,660 1920,1080 0,1080" fill="#161B27"/>
+<rect y="820" width="1920" height="260" fill="#11151F"/>
+<rect x="1180" y="560" width="70" height="270" fill="#0E121A"/><polygon points="1140,580 1215,470 1290,580" fill="#0E121A"/>
+<rect x="1300" y="610" width="46" height="220" fill="#0E121A"/><polygon points="1270,630 1323,540 1376,630" fill="#0E121A"/>
+<g fill="#E9C9A2" opacity=".35"><rect x="200" y="900" width="420" height="3"/><rect x="900" y="940" width="300" height="3"/><rect x="1400" y="880" width="380" height="3"/></g>
+</svg>
+<div style="position: absolute; top: 0; left: 0; right: 0; height: 30px; background: rgba(11,12,14,.86); display: flex; align-items: center; gap: 18px; padding: 0 14px; font: 400 12px 'Inter', 'Segoe UI', system-ui, sans-serif; color: #9AA0A8">
+<span>Firestorm 7.2.4 · Second Life viewer</span><span>World</span><span>Build</span><span>Avatar</span><span>Comm</span><span>Help</span></div><div style="position: absolute; right: 24px; top: 48px; width: 260px; padding: 12px 14px; border-radius: 6px; background: rgba(11,12,14,.88); border: 1px solid #2E3238; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; align-items: center"><span style="display: flex; gap: 8px; align-items: center"><img src="/_blob/0a3861e42f29f4f03393521f0cb2976f" alt="" style="width: 14px; height: 14px"><span style="font: 600 11px 'Inter', 'Segoe UI', system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #9AA0A8">Block</span></span><span style="font: 400 11px 'JetBrains Mono', Consolas, monospace; color: #9AA0A8">Cinematic</span></div>
+<div style="display: flex; justify-content: space-between"><span style="font: 400 12px 'JetBrains Mono', Consolas, monospace; color: #9AA0A8">FPS</span><span style="font: 400 12px 'JetBrains Mono', Consolas, monospace; color: #ECEEF0">118</span></div><div style="display: flex; justify-content: space-between"><span style="font: 400 12px 'JetBrains Mono', Consolas, monospace; color: #9AA0A8">frame</span><span style="font: 400 12px 'JetBrains Mono', Consolas, monospace; color: #ECEEF0">8.5 ms</span></div><div style="display: flex; justify-content: space-between"><span style="font: 400 12px 'JetBrains Mono', Consolas, monospace; color: #9AA0A8">block</span><span style="font: 400 12px 'JetBrains Mono', Consolas, monospace; color: #5BE3E8">1.16 ms</span></div><div style="display: flex; justify-content: space-between"><span style="font: 400 12px 'JetBrains Mono', Consolas, monospace; color: #9AA0A8">vram</span><span style="font: 400 12px 'JetBrains Mono', Consolas, monospace; color: #ECEEF0">2.9 GB</span></div>
+<svg width="232" height="28" viewBox="0 0 232 28" aria-hidden="true"><polyline points="0,18 12,16 24,17 36,15 48,18 60,16 72,9 84,17 96,16 108,15 120,17 132,16 144,18 156,16 168,15 180,17 192,16 204,16 216,15 232,16" fill="none" stroke="#5BE3E8" stroke-width="1.5"/></svg></div><div role="status" style="position: absolute; left: 50%; transform: translateX(-50%); top: 60px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 6px; background: #131417; border: 1px solid #2E3238; min-width: 420px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3DDC97" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="4"/></svg><span style="display: flex; flex-direction: column; gap: 2px"><span style="font: 600 13px 'Inter', 'Segoe UI', system-ui, sans-serif">Screenshot saved</span><span style="font: 400 12px 'JetBrains Mono', Consolas, monospace; color: #9AA0A8">screenshots/Block_2026-10-31_21-04-12.png · 3840×2160</span></span></div><div role="status" style="position: absolute; left: 50%; transform: translateX(-50%); top: 130px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 6px; background: #131417; border: 1px solid #2E3238; min-width: 420px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5BE3E8" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg><span style="display: flex; flex-direction: column; gap: 2px"><span style="font: 600 13px 'Inter', 'Segoe UI', system-ui, sans-serif">Shaders reloaded</span><span style="font: 400 12px 'JetBrains Mono', Consolas, monospace; color: #9AA0A8">6 compiled · 1 failed — open Shaders to see the error</span></span></div><div role="status" style="position: absolute; left: 50%; transform: translateX(-50%); top: 200px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 6px; background: #131417; border: 1px solid #2E3238; min-width: 420px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFB547" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg><span style="display: flex; flex-direction: column; gap: 2px"><span style="font: 600 13px 'Inter', 'Segoe UI', system-ui, sans-serif">Depth unavailable</span><span style="font: 400 12px 'JetBrains Mono', Consolas, monospace; color: #9AA0A8">Depth-based effects have been disabled for this viewer.</span></span></div><div role="status" style="position: absolute; left: 50%; transform: translateX(-50%); top: 270px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 6px; background: #131417; border: 1px solid #2E3238; min-width: 420px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9AA0A8" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span style="display: flex; flex-direction: column; gap: 2px"><span style="font: 600 13px 'Inter', 'Segoe UI', system-ui, sans-serif">Effects off</span><span style="font: 400 12px 'JetBrains Mono', Consolas, monospace; color: #9AA0A8">Press END to turn them back on</span></span></div><div style="position: absolute; left: 24px; bottom: 24px; padding: 8px 12px; border-radius: 6px; background: rgba(11,12,14,.88); border: 1px solid #2E3238; display: flex; gap: 10px; align-items: center"><img src="/_blob/0a3861e42f29f4f03393521f0cb2976f" alt="" style="width: 14px; height: 14px"><span style="font: 500 12px 'Inter', 'Segoe UI', system-ui, sans-serif; color: #9AA0A8">Block is running · press <kbd style="font: 400 11px 'JetBrains Mono', Consolas, monospace; color: #ECEEF0; padding: 1px 5px; border: 1px solid #2E3238; border-radius: 3px">HOME</kbd> to open</span></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

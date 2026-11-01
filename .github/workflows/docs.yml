@@ -1,0 +1,24 @@
+name: Docs (mkdocs)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Install
+        run: pip install mkdocs-material
+      - name: Build
+        run: |
+          if [ -f ./docs/mkdocs.yml ]; then
+            mkdocs build -f ./docs/mkdocs.yml || true
+          fi
+        # Marketing site deploys via pages.yml; mkdocs is optional/legacy.

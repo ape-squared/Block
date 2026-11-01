@@ -1,0 +1,53 @@
+# Builds
+build/
+build-win/
+
+# ReShade build trees
+third_party/reshade/bin/
+third_party/reshade/intermediate/
+third_party/reshade/.vs/
+third_party/reshade/**/*.pdb
+third_party/reshade/**/*.obj
+third_party/reshade/**/*.lib
+third_party/reshade/**/*.exp
+third_party/reshade/**/*.ilk
+
+# Large / duplicate trees
+archive/
+upstream/
+
+# Tooling / IDE
+.cache/
+.vs/
+.vscode/
+*.user
+*.suo
+imgui.ini
+
+# Logs & local junk
+*.log
+logs/
+cache/
+screenshots/
+.cursor-*.png
+.cursor-*.webp
+
+# OS
+.DS_Store
+Thumbs.db
+__pycache__/
+*.pyc
+
+# Meson downloaded subprojects (keep .wrap files)
+subprojects/*/
+!subprojects/*.wrap
+!subprojects/packagefiles/
+
+# Secrets
+.env
+.env.*
+*.pem
+credentials.json
+
+third_party/reshade/.git.bak-before-monorepo/
+

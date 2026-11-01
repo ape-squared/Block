@@ -1,0 +1,8 @@
+Block ships shaders from the GShade project (https://github.com/Mortalitas/GShade)
+and the ReShade-compatible subset (https://github.com/Mortalitas/GShade-Shaders)
+by Marot / Mortalitas, subject to per-file licenses in each shader header.
+
+Injector engine is based on ReShade by Patrick Mours (crosire):
+https://github.com/crosire/reshade (BSD-3-Clause).
+
+Block is independent and not affiliated with GShade, ReShade, or Linden Lab.
