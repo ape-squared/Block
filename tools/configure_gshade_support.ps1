@@ -54,7 +54,7 @@ function Expand-PresetZips([string]$dir) {
       Write-Host "Keeping existing presets: $packName ($($existing.Count) ini) — skip re-extract of $($_.Name)"
       return
     }
-    Write-Host "Extracting preset pack: $($_.Name) → $packName\"
+    Write-Host "Extracting preset pack: $($_.Name) -> $packName/"
     Expand-Archive -LiteralPath $_.FullName -DestinationPath $dir -Force
   }
 }
@@ -213,10 +213,15 @@ $ini = Set-IniValue $ini "GENERAL" "UseDithering" "1"
 $ini = Set-IniValue $ini "GENERAL" "NoReloadOnInit" "0"
 $ini = Set-IniValue $ini "GENERAL" "NoDebugInfo" "1"
 $ini = Set-IniValue $ini "GENERAL" "NoEffectCache" "0"
+# Match GShade: compile every effect on load (disabled ones still available to toggle without a full reload).
 $ini = Set-IniValue $ini "GENERAL" "SkipLoadingDisabledEffects" "0"
+$ini = Set-IniValue $ini "GENERAL" "PauseFXWhenUnfocused" "1"
 $ini = Set-IniValue $ini "GENERAL" "PerformanceMode" "0"
 $ini = Set-IniValue $ini "GENERAL" "EffectFrameDelay" "500"
 $ini = Set-IniValue $ini "GENERAL" "PresetTransitionDuration" "0"
+$ini = Set-IniValue $ini "OVERLAY" "ShowFXCost" "1"
+$ini = Set-IniValue $ini "OVERLAY" "FXBudgetMS" "4"
+$ini = Set-IniValue $ini "OVERLAY" "ShowHeavyPresetTip" "1"
 
 # Copy Generic Depth heuristics from GShade.ini (MXAO / DOF look wrong without these).
 function Get-IniSectionKey([string]$file, [string]$section, [string]$key) {
@@ -229,6 +234,32 @@ function Get-IniSectionKey([string]$file, [string]$section, [string]$key) {
   if ($km.Success) { return $km.Groups[1].Value.Trim() }
   return $null
 }
+# VET Graphics / MXAO / ATMOSPHERE all need the same depth buffer GShade picks.
+# Viewer depth profiles: Firestorm/Alchemy use D32/D32S8; Black Dragon starts FilterFormat=0 (manual pick common).
+# Never wipe Override* keys (persisted manual buffer picks from the overlay).
+# (Overlay UI can rewrite FilterFormat to 0/"All" and break AO until next configure.)
+$viewerLeaf = Split-Path $ViewerDir -Leaf
+$isBlackDragon = $viewerLeaf -match '(?i)black.?dragon|BDViewer'
+$depthFilter = if ($isBlackDragon) { "0" } else { "5" }       # All vs D32
+$depthIIFilter = if ($isBlackDragon) { "0" } else { "6" }     # All vs D32S8
+
+$ini = Set-IniValue $ini "DEPTH" "DrawStatsHeuristic" "2"
+$ini = Set-IniValue $ini "DEPTH" "FilterFormat" $depthFilter
+$ini = Set-IniValue $ini "DEPTH" "UseAspectRatioHeuristics" "3"
+# Preserve existing UseDefaultDepth / Override* if already set in viewer ini
+$existingUseDefault = Get-IniSectionKey $iniPath "DEPTH" "UseDefaultDepth"
+if ($null -eq $existingUseDefault -or $existingUseDefault -eq "") {
+  $ini = Set-IniValue $ini "DEPTH" "UseDefaultDepth" "0"
+}
+$ini = Set-IniValue $ini "DEPTH" "DepthCopyBeforeClears" "0"
+$ini = Set-IniValue $ini "DEPTH_II" "DrawStatsHeuristic" "2"
+$ini = Set-IniValue $ini "DEPTH_II" "FilterFormat" $depthIIFilter
+$ini = Set-IniValue $ini "DEPTH_II" "UseAspectRatioHeuristics" "2"
+$existingUseDefaultII = Get-IniSectionKey $iniPath "DEPTH_II" "UseDefaultDepth"
+if ($null -eq $existingUseDefaultII -or $existingUseDefaultII -eq "") {
+  $ini = Set-IniValue $ini "DEPTH_II" "UseDefaultDepth" "0"
+}
+
 $gshadeIniFile = Join-Path $ViewerDir "GShade.ini"
 if (Test-Path $gshadeIniFile) {
   foreach ($sec in @("DEPTH", "DEPTH_II")) {
@@ -239,12 +270,17 @@ if (Test-Path $gshadeIniFile) {
       }
     }
   }
-} else {
-  # Sensible SL defaults matching typical GShade Firestorm installs
-  $ini = Set-IniValue $ini "DEPTH" "DrawStatsHeuristic" "2"
-  $ini = Set-IniValue $ini "DEPTH" "FilterFormat" "5"
-  $ini = Set-IniValue $ini "DEPTH" "UseAspectRatioHeuristics" "3"
-  $ini = Set-IniValue $ini "DEPTH" "UseDefaultDepth" "0"
+}
+# Re-apply preserved Override* from the current viewer ReShade.ini (configure must not wipe them)
+if (Test-Path -LiteralPath $iniPath) {
+  foreach ($sec in @("DEPTH", "DEPTH_II")) {
+    foreach ($key in @("OverrideWidth", "OverrideHeight", "OverrideFormat", "UseDefaultDepth")) {
+      $v = Get-IniSectionKey $iniPath $sec $key
+      if ($null -ne $v -and $v -ne "") {
+        $ini = Set-IniValue $ini $sec $key $v
+      }
+    }
+  }
 }
 $ini = Set-IniValue $ini "ADDON" "AddonPath" $addonsRoot
 $ini = Set-IniValue $ini "ADDON" "DisabledAddons" $disabledAddons
@@ -278,7 +314,7 @@ Write-Host "  PresetPath -> $preferredPreset"
 Write-Host "  Heard presets: $heardCount"
 Write-Host "  Presets total: $presetCount under $presetsRoot"
 Write-Host "  AddonPath  -> $addonsRoot ($addonCount addon file(s))"
-Write-Host "  Look       -> GShade parity (PerformanceMode=0, UseDithering=1, DEPTH from GShade.ini, FontSize=18)"
+Write-Host "  Look       -> GShade parity (PerformanceMode=0, SkipLoading=0, UseDithering=1, DEPTH, ShowFXCost)"
 Write-Host "  Cache      -> $cacheRoot"
 Write-Host "  Paths      -> $($effectPaths -join ' | ')"
 if ($hasGShade) { Write-Host "  Shaders    -> $shaders (+ custom; viewer-local reshade-shaders skipped)" }

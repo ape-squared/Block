@@ -65,11 +65,27 @@ bool reshade::imgui::path_list(const char *label, std::vector<std::filesystem::p
 			const size_t buf_len = paths[i].u8string().copy(buf, sizeof(buf) - 1);
 			buf[buf_len] = '\0';
 
-			ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - (button_spacing + button_size));
+			const float recurse_w = ImGui::GetFrameHeight() + button_spacing;
+			ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - (button_spacing + button_size) - recurse_w);
 			if (ImGui::InputText("##path", buf, sizeof(buf), ImGuiInputTextFlags_CallbackCompletion, &resolve_macros))
 			{
 				res = true;
 				paths[i] = std::filesystem::u8path(buf);
+			}
+
+			ImGui::SameLine(0, button_spacing);
+			{
+				const bool recursive = paths[i].filename() == L"**";
+				bool recurse_toggle = recursive;
+				if (ImGui::Checkbox("##recurse", &recurse_toggle))
+				{
+					res = true;
+					if (recurse_toggle && !recursive)
+						paths[i] = paths[i] / L"**";
+					else if (!recurse_toggle && recursive)
+						paths[i] = paths[i].parent_path();
+				}
+				ImGui::SetItemTooltip("Search this folder recursively (appends \\**).");
 			}
 
 			ImGui::SameLine(0, button_spacing);

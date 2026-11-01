@@ -192,6 +192,11 @@ namespace reshade
 		void enable_technique(technique &technique);
 		void disable_technique(technique &technique);
 
+		/// <summary>GPU cost of enabled techniques in milliseconds (0 if stats unavailable).</summary>
+		float active_fx_gpu_ms() const;
+		/// <summary>Disable heaviest enabled techniques until total GPU cost is under <paramref name="budget_ms"/>. Returns how many were disabled.</summary>
+		size_t trim_effects_to_budget_ms(float budget_ms);
+
 		void reorder_techniques(std::vector<size_t> &&technique_indices);
 
 		void load_effects(bool force_load_all = false);
@@ -272,6 +277,7 @@ namespace reshade
 		bool _effects_enabled = true;
 		bool _effects_rendered_this_frame = false;
 		unsigned int _effects_key_data[4] = {};
+		bool _pause_fx_when_unfocused = true; // Block: skip render_effects when viewer not foreground
 
 		std::chrono::system_clock::time_point _current_time;
 		uint64_t _frame_count = 0;
@@ -286,6 +292,9 @@ namespace reshade
 		bool _performance_mode = false;
 		bool _effect_load_skipping = false;
 		unsigned int _reload_key_data[4] = {};
+		/// <summary>Effect filenames (e.g. MXAO.fx) that always compile even when load-skipping.</summary>
+		std::vector<std::string> _pinned_effect_files;
+		std::filesystem::path _log_path; // empty = sibling of ReShade.ini
 
 		std::vector<std::pair<std::string, std::string>> _global_preprocessor_definitions;
 		std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>> _preset_preprocessor_definitions;
@@ -379,12 +388,23 @@ namespace reshade
 		bool _is_in_preset_transition = false;
 		std::chrono::high_resolution_clock::time_point _last_preset_switching_time;
 
+		// Latest preset requested while a compile is in flight — applied when reload finishes.
+		bool _has_pending_preset = false;
+		std::filesystem::path _pending_preset_path;
+
 		struct preset_shortcut
 		{
 			std::filesystem::path preset_path;
 			unsigned int key_data[4] = {};
 		};
 		std::vector<preset_shortcut> _preset_shortcuts;
+
+		std::vector<std::filesystem::path> _favorite_presets;
+		std::vector<std::filesystem::path> _recent_presets; // newest first, cap 12
+		unsigned int _nudge_inc_key_data[4] = {};
+		unsigned int _nudge_dec_key_data[4] = {};
+		size_t _focused_uniform_effect = std::numeric_limits<size_t>::max();
+		size_t _focused_uniform_index = std::numeric_limits<size_t>::max();
 		#pragma endregion
 
 #if RESHADE_GUI
@@ -427,6 +447,10 @@ namespace reshade
 		unsigned int _show_clock = false;
 		unsigned int _show_frametime = false;
 		unsigned int _show_preset_name = false;
+		unsigned int _show_fx_cost = 1; // Block default: always show FX ms on OSD
+		float _fx_budget_ms = 4.0f; // one-click trim target
+		bool _show_heavy_preset_tip = true;
+		bool _heavy_preset_tip_pending = false;
 		bool _show_screenshot_message = true;
 		bool _show_preset_transition_message = true;
 		unsigned int _reload_count = 0;
@@ -467,6 +491,7 @@ namespace reshade
 		size_t _selected_technique = std::numeric_limits<size_t>::max();
 		unsigned int _tutorial_index = 0;
 		unsigned int _effects_expanded_state = 2;
+		unsigned int _techniques_expanded_state = 2; // technique editor Collapse/Expand all
 		float _variable_editor_height = 200.0f;
 		#pragma endregion
 

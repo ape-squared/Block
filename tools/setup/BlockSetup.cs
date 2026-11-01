@@ -136,7 +136,7 @@ namespace Block.Setup
             side.Controls.Add(_stepNav);
             side.Controls.Add(new Label
             {
-                Text = "v0.3.0 · x64", ForeColor = Brand.InkMuted, Font = new Font("Consolas", 8.5f),
+                Text = "v0.3.2 · x64", ForeColor = Brand.InkMuted, Font = new Font("Consolas", 8.5f),
                 Location = new Point(20, 380), AutoSize = true
             });
             body.Controls.Add(side);
@@ -286,21 +286,31 @@ namespace Block.Setup
             {
                 Location = new Point(0, 306), Size = new Size(500, 32),
                 Font = new Font("Segoe UI", 8.5f), ForeColor = Brand.InkMuted,
-                Text = "Check addons to copy into each viewer’s gshade-addons. DLSS / renodx blocked for OpenGL."
+                Text = "Check addons to copy into each viewer’s gshade-addons. DLSS / renodx blocked for OpenGL.\nEmpty catalog? Drop *.addon64 into %LOCALAPPDATA%\\Block\\addons-catalog or the viewer’s gshade-addons."
             };
             p.Controls.Add(addonHint);
 
             var rescan = MakeBtn("Rescan", false);
-            rescan.Location = new Point(0, 338);
+            rescan.Location = new Point(0, 348);
             rescan.Size = new Size(96, 28);
             rescan.Click += (s, e) => { RefreshViewers(); RefreshAddons(); };
             var browse = MakeBtn("Browse…", false);
-            browse.Location = new Point(104, 338);
+            browse.Location = new Point(104, 348);
             browse.Size = new Size(96, 28);
             browse.Click += Browse_Click;
+            var openCatalog = MakeBtn("Open catalog", false);
+            openCatalog.Location = new Point(208, 348);
+            openCatalog.Size = new Size(110, 28);
+            openCatalog.Click += (s, e) =>
+            {
+                var catalog = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Block", "addons-catalog");
+                try { Directory.CreateDirectory(catalog); } catch { }
+                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = catalog, UseShellExecute = true }); } catch { }
+            };
+            p.Controls.Add(openCatalog);
             status = new Label
             {
-                AutoSize = true, Location = new Point(212, 344),
+                AutoSize = true, Location = new Point(326, 354),
                 Font = new Font("Consolas", 9f), ForeColor = Brand.Ok,
                 Text = File.Exists(InjectorDll()) ? "Injector ready" : "Build injector first"
             };
@@ -491,9 +501,9 @@ namespace Block.Setup
                 foreach (ListViewItem i in _addons.Items)
                     if (i.SubItems[2].Text == "blocked") blocked++;
                 _addonHint.Text = n == 0
-                    ? "No *.addon64 in payload/addons or %LOCALAPPDATA%\\Block\\addons-catalog. Perf defaults still apply."
+                    ? "No *.addon64 found. Copy safe OpenGL addons into %LOCALAPPDATA%\\Block\\addons-catalog (Open catalog) or each viewer’s gshade-addons, then Rescan. DLSS/renodx stay blocked."
                     : n + " addon(s) listed" + (blocked > 0 ? " (" + blocked + " blocked for OpenGL)." : ".") +
-                      " Perf: Performance Mode + compile only active preset.";
+                      " Checked items copy into the selected viewer’s gshade-addons.";
             }
         }
 

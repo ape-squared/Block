@@ -153,8 +153,12 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD fdwReason, LPVOID)
 
 			if (config.get("INSTALL", "Logging") || (!config.has("INSTALL", "Logging") && !GetEnvironmentVariableW(L"RESHADE_DISABLE_LOGGING", nullptr, 0)))
 			{
-				std::filesystem::path log_path = config.path();
-				log_path.replace_extension(L".log");
+				std::filesystem::path log_path;
+				if (!config.get("GENERAL", "LogPath", log_path) || log_path.empty())
+				{
+					log_path = config.path();
+					log_path.replace_extension(L".log");
+				}
 
 				std::error_code ec;
 				if (!reshade::log::open_log_file(log_path, ec))

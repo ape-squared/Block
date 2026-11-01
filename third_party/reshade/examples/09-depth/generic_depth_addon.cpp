@@ -5,6 +5,7 @@
 
 #include <imgui.h>
 #include <reshade.hpp>
+#include "../../source/block_depth_status.hpp"
 #include <mutex>
 #include <shared_mutex>
 #include <vector>
@@ -46,6 +47,11 @@ static aspect_ratio_heuristic s_aspect_ratio_heuristic = aspect_ratio_heuristic:
 // Enable or disable the format check from 'check_depth_format' in the detection heuristic
 static unsigned int s_format_filtering = 0;
 static unsigned int s_custom_resolution_filtering[2] = {};
+// Persist manual depth override across restarts (match by width/height/format)
+static unsigned int s_use_default_depth = 0; // 1 = restore Override* pick
+static unsigned int s_override_width = 0;
+static unsigned int s_override_height = 0;
+static unsigned int s_override_format = 0; // reshade::api::format as uint
 
 enum class clear_op : uint8_t
 {
@@ -510,6 +516,11 @@ static void on_init_device(device *device)
 	reshade::get_config_value(nullptr, "DEPTH", "FilterFormat", s_format_filtering);
 	reshade::get_config_value(nullptr, "DEPTH", "FilterResolutionWidth", s_custom_resolution_filtering[0]);
 	reshade::get_config_value(nullptr, "DEPTH", "FilterResolutionHeight", s_custom_resolution_filtering[1]);
+
+	reshade::get_config_value(nullptr, "DEPTH", "UseDefaultDepth", s_use_default_depth);
+	reshade::get_config_value(nullptr, "DEPTH", "OverrideWidth", s_override_width);
+	reshade::get_config_value(nullptr, "DEPTH", "OverrideHeight", s_override_height);
+	reshade::get_config_value(nullptr, "DEPTH", "OverrideFormat", s_override_format);
 
 	if (s_aspect_ratio_heuristic > aspect_ratio_heuristic::match_custom_resolution_exactly)
 		s_aspect_ratio_heuristic = aspect_ratio_heuristic::similar_aspect_ratio;
@@ -992,6 +1003,20 @@ static void on_begin_render_effects(effect_runtime *runtime, command_list *cmd_l
 		}
 	}
 
+	// Restore persisted manual pick by width/height/format when handle is gone (device reset / restart)
+	if (data.override_depth_stencil == 0 && s_use_default_depth != 0 && s_override_width != 0 && s_override_height != 0)
+	{
+		for (auto &[depth_stencil, info] : current_depth_stencil_resources)
+		{
+			if (info.desc.texture.width != s_override_width || info.desc.texture.height != s_override_height)
+				continue;
+			if (s_override_format != 0 && static_cast<unsigned int>(info.desc.texture.format) != s_override_format)
+				continue;
+			data.override_depth_stencil = depth_stencil;
+			break;
+		}
+	}
+
 	if (data.override_depth_stencil != 0)
 	{
 		const auto it = current_depth_stencil_resources.find(data.override_depth_stencil);
@@ -1143,6 +1168,18 @@ static void on_begin_render_effects(effect_runtime *runtime, command_list *cmd_l
 
 		device->destroy_resource_view(prev_shader_resource);
 	}
+
+	block::g_depth_ready.store(data.selected_shader_resource != 0 ? 1u : 0u, std::memory_order_relaxed);
+	if (selected_depth_stencil_info != nullptr)
+	{
+		block::g_depth_width.store(selected_depth_stencil_info->desc.texture.width, std::memory_order_relaxed);
+		block::g_depth_height.store(selected_depth_stencil_info->desc.texture.height, std::memory_order_relaxed);
+	}
+	else if (data.selected_shader_resource == 0)
+	{
+		block::g_depth_width.store(0, std::memory_order_relaxed);
+		block::g_depth_height.store(0, std::memory_order_relaxed);
+	}
 }
 static void on_finish_render_effects(effect_runtime *runtime, command_list *cmd_list, resource_view, resource_view)
 {
@@ -1276,6 +1313,22 @@ static void draw_settings_overlay(effect_runtime *runtime)
 	auto &data = *runtime->get_private_data<generic_depth_data>();
 	generic_depth_device_data *const device_data = device->get_private_data<generic_depth_device_data>();
 
+	{
+		const bool ready = data.selected_shader_resource != 0;
+		if (ready)
+			ImGui::TextColored(ImVec4(0.45f, 0.9f, 0.45f, 1.0f), "Depth check: OK (%ux%u)%s",
+				block::g_depth_width.load(std::memory_order_relaxed),
+				block::g_depth_height.load(std::memory_order_relaxed),
+				data.using_backup_texture ? " [backup]" : "");
+		else
+			ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.35f, 1.0f), "Depth check: missing — pick a buffer below or adjust filters");
+		ImGui::SameLine();
+		if (ImGui::SmallButton("Recheck"))
+			force_reset = true;
+		ImGui::SetItemTooltip("Force re-select the depth buffer next frame.");
+		ImGui::Spacing();
+	}
+
 	std::shared_lock<std::shared_mutex> lock(s_mutex);
 
 	if (device_data == nullptr || device_data->depth_stencil_resources.empty())
@@ -1328,6 +1381,23 @@ static void draw_settings_overlay(effect_runtime *runtime)
 			ImGui::Checkbox(label, &value))
 		{
 			data.override_depth_stencil = value ? depth_stencil : resource { 0 };
+			s_use_default_depth = value ? 1u : 0u;
+			if (value)
+			{
+				s_override_width = info.desc.texture.width;
+				s_override_height = info.desc.texture.height;
+				s_override_format = static_cast<unsigned int>(info.desc.texture.format);
+			}
+			else
+			{
+				s_override_width = 0;
+				s_override_height = 0;
+				s_override_format = 0;
+			}
+			reshade::set_config_value(nullptr, "DEPTH", "UseDefaultDepth", s_use_default_depth);
+			reshade::set_config_value(nullptr, "DEPTH", "OverrideWidth", s_override_width);
+			reshade::set_config_value(nullptr, "DEPTH", "OverrideHeight", s_override_height);
+			reshade::set_config_value(nullptr, "DEPTH", "OverrideFormat", s_override_format);
 			force_reset = true;
 		}
 

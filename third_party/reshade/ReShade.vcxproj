@@ -531,6 +531,10 @@
       <ForcedIncludeFiles>reshade.hpp;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <PreprocessorDefinitions>BUILTIN_ADDON;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <ClCompile Include="examples\09-depth\generic_depth_ii_addon.cpp">
+      <ForcedIncludeFiles>reshade.hpp;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <PreprocessorDefinitions>BUILTIN_ADDON;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <ClCompile Include="examples\15-effect_runtime_sync\runtime_sync_addon.cpp">
       <ForcedIncludeFiles>reshade.hpp;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <PreprocessorDefinitions>BUILTIN_ADDON;%(PreprocessorDefinitions)</PreprocessorDefinitions>

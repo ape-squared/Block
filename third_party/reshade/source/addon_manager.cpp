@@ -13,8 +13,10 @@
 #include <Windows.h>
 
 extern void register_addon_depth();
+extern void register_addon_depth_ii();
 extern void register_addon_effect_runtime_sync();
 extern void unregister_addon_depth();
+extern void unregister_addon_depth_ii();
 extern void unregister_addon_effect_runtime_sync();
 
 extern HMODULE g_module_handle;
@@ -171,6 +173,21 @@ void reshade::load_addons()
 			info.handle = g_module_handle;
 
 			register_addon_depth();
+		}
+	}
+	{	// GShade KeepUI / dual-depth parity — binds the DEPTH_II semantic (see GShade.fxh).
+		addon_info &info = addon_loaded_info.emplace_back();
+		info.name = "Generic Depth II";
+		info.description = "Second depth-buffer detector (DEPTH_II) used by GShade KeepUI and dual-depth effects.";
+		info.author = "Block";
+		info.api_version = RESHADE_API_VERSION;
+		info.external = false;
+
+		if (std::find(disabled_addons.cbegin(), disabled_addons.cend(), info.name) == disabled_addons.cend())
+		{
+			info.handle = g_module_handle;
+
+			register_addon_depth_ii();
 		}
 	}
 	{	addon_info &info = addon_loaded_info.emplace_back();
@@ -389,6 +406,7 @@ void reshade::unload_addons()
 
 #if 1
 	unregister_addon_depth();
+	unregister_addon_depth_ii();
 	unregister_addon_effect_runtime_sync();
 #endif
 

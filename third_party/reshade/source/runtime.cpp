@@ -16,6 +16,7 @@
 #include "input.hpp"
 #include "platform_utils.hpp"
 #include "reshade_api_object_impl.hpp"
+#include <Windows.h>
 #include <set>
 #include <cmath> // std::abs, std::fmod
 #include <cctype> // std::toupper
@@ -734,7 +735,15 @@ void reshade::runtime::on_present()
 	if (_should_save_screenshot && _screenshot_save_before && _effects_enabled && !_effects_rendered_this_frame)
 		save_screenshot("Before");
 
-	if (!is_loading() && !_techniques.empty())
+	bool fx_paused_unfocused = false;
+	if (_pause_fx_when_unfocused)
+	{
+		const HWND target = static_cast<HWND>(get_hwnd());
+		const HWND foreground = GetForegroundWindow();
+		fx_paused_unfocused = target != nullptr && foreground != nullptr && foreground != target && !IsChild(foreground, target) && !IsChild(target, foreground);
+	}
+
+	if (!is_loading() && !_techniques.empty() && !fx_paused_unfocused)
 	{
 		if (_back_buffer_resolved != 0)
 		{
@@ -787,6 +796,44 @@ void reshade::runtime::on_present()
 			_screenshot_count++;
 			_should_save_screenshot = true; // Remember that we want to save a screenshot next frame
 		}
+
+#if RESHADE_GUI
+		// Nudge focused/hovered uniform by ui_step while overlay is open
+		if (_show_overlay && _focused_uniform_effect < _effects.size() && _focused_uniform_index < _effects[_focused_uniform_effect].uniforms.size())
+		{
+			const bool inc = _input->is_key_pressed(_nudge_inc_key_data, _force_shortcut_modifiers);
+			const bool dec = _input->is_key_pressed(_nudge_dec_key_data, _force_shortcut_modifiers);
+			if (inc || dec)
+			{
+				uniform &variable = _effects[_focused_uniform_effect].uniforms[_focused_uniform_index];
+				const float direction = inc ? 1.0f : -1.0f;
+				if (variable.type.is_floating_point())
+				{
+					float values[16] = {};
+					get_uniform_value(variable, values, 16);
+					const float step = variable.annotation_as_float("ui_step", 0, 0.001f);
+					const unsigned int components = variable.type.components();
+					for (unsigned int c = 0; c < components; ++c)
+						values[c] += direction * step;
+					set_uniform_value(variable, values, components);
+				}
+				else if (variable.type.is_integral() && !variable.type.is_boolean())
+				{
+					int values[16] = {};
+					get_uniform_value(variable, values, 16);
+					const int step = variable.annotation_as_int("ui_step", 0, 1);
+					const unsigned int components = variable.type.components();
+					for (unsigned int c = 0; c < components; ++c)
+						values[c] += static_cast<int>(direction) * step;
+					set_uniform_value(variable, values, components);
+				}
+				if (_auto_save_preset)
+					save_current_preset();
+				else
+					_preset_is_modified = true;
+			}
+		}
+#endif
 
 		// Do not allow the following shortcuts while effects are being loaded or initialized (since they affect that state)
 		if (!is_loading())
@@ -858,17 +905,21 @@ void reshade::runtime::on_present()
 				}
 			}
 
-			if (_input->is_key_pressed(_reload_key_data, _force_shortcut_modifiers))
+			if (_input->is_key_pressed(_reload_key_data, _force_shortcut_modifiers) && !is_loading())
 				reload_effects();
 
-			// Ignore preset hotkeys while effects are compiling — same nest-reload crash path as spam-clicking arrows.
-			if (!is_loading())
+			// Preset hotkeys queue while compiling (applied when reload finishes) — no nested reload.
 			{
+				const std::filesystem::path browse_from = (_has_pending_preset ? _pending_preset_path : _current_preset_path).parent_path();
 				if (const bool reversed = _input->is_key_pressed(_prev_preset_key_data, _force_shortcut_modifiers);
 					reversed || _input->is_key_pressed(_next_preset_key_data, _force_shortcut_modifiers))
 				{
-					if (switch_to_next_preset(_current_preset_path.parent_path(), reversed))
+					if (switch_to_next_preset(browse_from, reversed))
+					{
 						save_config();
+						if (!is_loading())
+							load_current_preset();
+					}
 				}
 				else
 				{
@@ -877,7 +928,11 @@ void reshade::runtime::on_present()
 						if (_input->is_key_pressed(shortcut.key_data, _force_shortcut_modifiers))
 						{
 							if (switch_to_next_preset(shortcut.preset_path))
+							{
 								save_config();
+								if (!is_loading())
+									load_current_preset();
+							}
 							break;
 						}
 					}
@@ -885,7 +940,7 @@ void reshade::runtime::on_present()
 			}
 
 			// Continuously update preset values while a transition is in progress
-			if (_is_in_preset_transition)
+			if (_is_in_preset_transition && !is_loading())
 				load_current_preset();
 		}
 	}
@@ -1010,6 +1065,8 @@ void reshade::runtime::load_config()
 	config_get("INPUT", "KeyNextPreset", _next_preset_key_data);
 	config_get("INPUT", "KeyPreviousPreset", _prev_preset_key_data);
 	config_get("INPUT", "KeyReload", _reload_key_data);
+	config_get("INPUT", "KeyNudgeInc", _nudge_inc_key_data);
+	config_get("INPUT", "KeyNudgeDec", _nudge_dec_key_data);
 
 	config_get("GENERAL", "NoDebugInfo", _no_debug_info);
 	config_get("GENERAL", "NoEffectCache", _no_effect_cache);
@@ -1019,8 +1076,16 @@ void reshade::runtime::load_config()
 	config_get("GENERAL", "PerformanceMode", _performance_mode);
 	config_get("GENERAL", "PreprocessorDefinitions", _global_preprocessor_definitions);
 	config_get("GENERAL", "SkipLoadingDisabledEffects", _effect_load_skipping);
+	config_get("GENERAL", "PinnedEffectFiles", _pinned_effect_files);
+	config_get("GENERAL", "PauseFXWhenUnfocused", _pause_fx_when_unfocused);
+	config_get("GENERAL", "LogPath", _log_path);
 	config_get("GENERAL", "TextureSearchPaths", _texture_search_paths);
 	config_get("GENERAL", "IntermediateCachePath", _effect_cache_path);
+
+	config_get("BLOCK", "FavoritePresets", _favorite_presets);
+	config_get("BLOCK", "RecentPresets", _recent_presets);
+	if (_recent_presets.size() > 12)
+		_recent_presets.resize(12);
 
 	config_get("GENERAL", "StartupPresetPath", _startup_preset_path);
 	config_get("GENERAL", "PresetPath", _current_preset_path);
@@ -1087,6 +1152,8 @@ void reshade::runtime::save_config() const
 	config.set("INPUT", "KeyNextPreset", _next_preset_key_data);
 	config.set("INPUT", "KeyPreviousPreset", _prev_preset_key_data);
 	config.set("INPUT", "KeyReload", _reload_key_data);
+	config.set("INPUT", "KeyNudgeInc", _nudge_inc_key_data);
+	config.set("INPUT", "KeyNudgeDec", _nudge_dec_key_data);
 
 	config.set("GENERAL", "NoDebugInfo", _no_debug_info);
 	config.set("GENERAL", "NoEffectCache", _no_effect_cache);
@@ -1096,8 +1163,14 @@ void reshade::runtime::save_config() const
 	config.set("GENERAL", "PerformanceMode", _performance_mode);
 	config.set("GENERAL", "PreprocessorDefinitions", _global_preprocessor_definitions);
 	config.set("GENERAL", "SkipLoadingDisabledEffects", _effect_load_skipping);
+	config.set("GENERAL", "PinnedEffectFiles", _pinned_effect_files);
+	config.set("GENERAL", "PauseFXWhenUnfocused", _pause_fx_when_unfocused);
+	config.set("GENERAL", "LogPath", _log_path);
 	config.set("GENERAL", "TextureSearchPaths", _texture_search_paths);
 	config.set("GENERAL", "IntermediateCachePath", _effect_cache_path);
+
+	config.set("BLOCK", "FavoritePresets", _favorite_presets);
+	config.set("BLOCK", "RecentPresets", _recent_presets);
 
 	config.set("GENERAL", "StartupPresetPath", make_relative_path(_startup_preset_path));
 	config.set("GENERAL", "PresetPath", make_relative_path(_current_preset_path));
@@ -1447,6 +1520,22 @@ bool reshade::runtime::switch_to_next_preset(std::filesystem::path filter_path, 
 
 	resolve_path(filter_path, ec);
 
+	const std::filesystem::path &reference_path = _has_pending_preset ? _pending_preset_path : _current_preset_path;
+
+	const auto commit_preset = [this](std::filesystem::path chosen) {
+		// While compiling, queue the latest choice — applied when reload finishes (no nested reload).
+		if (is_loading())
+		{
+			_pending_preset_path = std::move(chosen);
+			_has_pending_preset = true;
+			return;
+		}
+		_has_pending_preset = false;
+		_current_preset_path = std::move(chosen);
+		_last_preset_switching_time = _last_present_time;
+		_is_in_preset_transition = true;
+	};
+
 	if (const std::filesystem::file_type file_type = std::filesystem::status(filter_path, ec).type();
 		file_type != std::filesystem::file_type::directory)
 	{
@@ -1458,10 +1547,7 @@ bool reshade::runtime::switch_to_next_preset(std::filesystem::path filter_path, 
 		}
 		else
 		{
-			_current_preset_path = filter_path;
-			_last_preset_switching_time = _last_present_time;
-			_is_in_preset_transition = true;
-
+			commit_preset(std::move(filter_path));
 			return true;
 		}
 	}
@@ -1475,8 +1561,8 @@ bool reshade::runtime::switch_to_next_preset(std::filesystem::path filter_path, 
 		if (!resolve_preset_path(preset_path, ec))
 			continue;
 
-		// Keep track of the index of the current preset in the list of found preset files that is being build
-		if (std::filesystem::equivalent(preset_path, _current_preset_path, ec))
+		// Keep track of the index of the current (or queued) preset in the list of found preset files that is being build
+		if (std::filesystem::equivalent(preset_path, reference_path, ec))
 		{
 			current_preset_index = preset_paths.size();
 			preset_paths.push_back(std::move(preset_path));
@@ -1494,26 +1580,25 @@ bool reshade::runtime::switch_to_next_preset(std::filesystem::path filter_path, 
 	if (preset_paths.empty())
 		return false; // No valid preset files were found, so nothing more to do
 
+	std::filesystem::path chosen;
 	if (current_preset_index == std::numeric_limits<size_t>::max())
 	{
 		// Current preset was not in the filter path, so just use the first or last file
 		if (reversed)
-			_current_preset_path = preset_paths.back();
+			chosen = preset_paths.back();
 		else
-			_current_preset_path = preset_paths.front();
+			chosen = preset_paths.front();
 	}
 	else
 	{
 		// Current preset was found in the filter path, so use the file before or after it
 		if (auto it = std::next(preset_paths.begin(), current_preset_index); reversed)
-			_current_preset_path = (it == preset_paths.begin()) ? preset_paths.back() : *(--it);
+			chosen = (it == preset_paths.begin()) ? preset_paths.back() : *(--it);
 		else
-			_current_preset_path = (it == std::prev(preset_paths.end())) ? preset_paths.front() : *(++it);
+			chosen = (it == std::prev(preset_paths.end())) ? preset_paths.front() : *(++it);
 	}
 
-	_last_preset_switching_time = _last_present_time;
-	_is_in_preset_transition = true;
-
+	commit_preset(std::move(chosen));
 	return true;
 }
 
@@ -1636,20 +1721,29 @@ bool reshade::runtime::load_effect(const std::filesystem::path &source_file, con
 
 	if (_effect_load_skipping && !force_load)
 	{
-		if (std::vector<std::string> techniques;
-			preset.get({}, "Techniques", techniques) && !techniques.empty())
-		{
-			effect.skipped = std::find_if(techniques.cbegin(), techniques.cend(),
-				[&effect_name](const std::string &technique) {
-					const size_t at_pos = technique.find('@') + 1;
-					return at_pos == 0 || technique.find(effect_name, at_pos) == at_pos;
-				}) == techniques.cend();
+		const std::string effect_filename = source_file.filename().u8string();
+		const bool is_pinned = std::find_if(_pinned_effect_files.cbegin(), _pinned_effect_files.cend(),
+			[&effect_filename](const std::string &pinned) {
+				return _stricmp(pinned.c_str(), effect_filename.c_str()) == 0;
+			}) != _pinned_effect_files.cend();
 
-			if (effect.skipped)
+		if (!is_pinned)
+		{
+			if (std::vector<std::string> techniques;
+				preset.get({}, "Techniques", techniques) && !techniques.empty())
 			{
-				if (_reload_remaining_effects != std::numeric_limits<size_t>::max())
-					_reload_remaining_effects--;
-				return false;
+				effect.skipped = std::find_if(techniques.cbegin(), techniques.cend(),
+					[&effect_name](const std::string &technique) {
+						const size_t at_pos = technique.find('@') + 1;
+						return at_pos == 0 || technique.find(effect_name, at_pos) == at_pos;
+					}) == techniques.cend();
+
+				if (effect.skipped)
+				{
+					if (_reload_remaining_effects != std::numeric_limits<size_t>::max())
+						_reload_remaining_effects--;
+					return false;
+				}
 			}
 		}
 	}
@@ -3349,6 +3443,66 @@ void reshade::runtime::destroy_texture(texture &tex)
 	tex.uav.clear();
 }
 
+float reshade::runtime::active_fx_gpu_ms() const
+{
+	uint64_t total_ns = 0;
+	for (const technique &tech : _techniques)
+	{
+		if (tech.enabled)
+			total_ns += tech.average_gpu_duration;
+	}
+	return static_cast<float>(total_ns) * 1e-6f;
+}
+size_t reshade::runtime::trim_effects_to_budget_ms(float budget_ms)
+{
+	if (budget_ms <= 0.0f || is_loading())
+		return 0;
+
+	struct entry { size_t index; uint64_t gpu_ns; };
+	std::vector<entry> enabled;
+	enabled.reserve(_techniques.size());
+	uint64_t total_ns = 0;
+	for (size_t i = 0; i < _techniques.size(); ++i)
+	{
+		const technique &tech = _techniques[i];
+		if (!tech.enabled)
+			continue;
+		enabled.push_back({ i, tech.average_gpu_duration });
+		total_ns += tech.average_gpu_duration;
+	}
+
+	const uint64_t budget_ns = static_cast<uint64_t>(budget_ms * 1e6f);
+	if (total_ns <= budget_ns)
+		return 0;
+
+	std::sort(enabled.begin(), enabled.end(),
+		[](const entry &a, const entry &b) { return a.gpu_ns > b.gpu_ns; });
+
+	size_t disabled = 0;
+	for (const entry &e : enabled)
+	{
+		if (total_ns <= budget_ns)
+			break;
+		// Prefer dropping measured heavies; if stats are cold, fall through lightest-first won't help — still drop.
+		disable_technique(_techniques[e.index]);
+		total_ns -= e.gpu_ns;
+		++disabled;
+	}
+
+	if (disabled != 0)
+	{
+#if RESHADE_GUI
+		if (_auto_save_preset)
+			save_current_preset();
+		else
+			_preset_is_modified = true;
+#else
+		save_current_preset();
+#endif
+	}
+	return disabled;
+}
+
 void reshade::runtime::enable_technique(technique &tech)
 {
 	assert(tech.effect_index < _effects.size());
@@ -3742,6 +3896,19 @@ void reshade::runtime::update_effects()
 				thread.join(); // Threads have exited, but still need to join them prior to destruction
 		_worker_threads.clear();
 
+		// Apply the latest preset requested during this compile (spam-safe queue).
+		if (_has_pending_preset)
+		{
+			_has_pending_preset = false;
+			std::error_code ec;
+			if (!std::filesystem::equivalent(_pending_preset_path, _current_preset_path, ec))
+			{
+				_current_preset_path = std::move(_pending_preset_path);
+				_last_preset_switching_time = _last_present_time;
+				_is_in_preset_transition = true;
+			}
+		}
+
 		// Finished loading effects, so apply preset to figure out which ones need compiling
 		load_current_preset();
 
@@ -3753,6 +3920,32 @@ void reshade::runtime::update_effects()
 		_reload_remaining_effects = std::numeric_limits<size_t>::max();
 
 #if RESHADE_GUI
+		// One-shot tip when preset looks heavy (many techniques or over FX budget)
+		if (_show_heavy_preset_tip)
+		{
+			size_t enabled_count = 0;
+			for (const technique &tech : _techniques)
+				if (tech.enabled && !tech.hidden)
+					++enabled_count;
+			const float fx_ms = active_fx_gpu_ms();
+			if (enabled_count >= 12 || (_fx_budget_ms > 0.0f && fx_ms > _fx_budget_ms * 1.25f))
+				_heavy_preset_tip_pending = true;
+		}
+
+		// Track recent presets (newest first, cap 12)
+		if (!_current_preset_path.empty())
+		{
+			_recent_presets.erase(std::remove_if(_recent_presets.begin(), _recent_presets.end(),
+				[this](const std::filesystem::path &p) {
+					std::error_code ec;
+					return std::filesystem::equivalent(p, _current_preset_path, ec) || p == _current_preset_path;
+				}), _recent_presets.end());
+			_recent_presets.insert(_recent_presets.begin(), _current_preset_path);
+			if (_recent_presets.size() > 12)
+				_recent_presets.resize(12);
+			save_config();
+		}
+
 		// Update all code editors after a reload
 		for (editor_instance &instance : _editors)
 		{

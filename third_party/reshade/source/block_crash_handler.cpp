@@ -175,14 +175,32 @@ void block::prompt_pending_crash_reports()
 	if (!std::filesystem::exists(pending))
 		return;
 
+	std::string dump_hint;
+	{
+		const HANDLE flag = CreateFileW(pending.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+		if (flag != INVALID_HANDLE_VALUE)
+		{
+			char buf[1024] = {};
+			DWORD read = 0;
+			if (ReadFile(flag, buf, sizeof(buf) - 1, &read, nullptr) && read > 0)
+				dump_hint.assign(buf, read);
+			CloseHandle(flag);
+		}
+	}
+
 	std::error_code ec;
 	std::filesystem::remove(pending, ec);
+
+	WCHAR viewer[MAX_PATH] = {};
+	GetModuleFileNameW(nullptr, viewer, MAX_PATH);
+	const std::filesystem::path viewer_path(viewer);
+	const std::string viewer_name = viewer_path.filename().u8string();
 
 	const int choice = MessageBoxW(
 		nullptr,
 		L"Block detected a crash from a previous session.\n\n"
 		L"A dump was saved under %LOCALAPPDATA%\\Block\\crashes\\.\n\n"
-		L"Open the crash folder and GitHub issues so you can attach the dump?",
+		L"Open the crash folder and a prefilled GitHub issue (version, viewer, dump path)?",
 		L"Block — crash report",
 		MB_YESNO | MB_ICONWARNING | MB_SETFOREGROUND | MB_TOPMOST);
 
@@ -190,10 +208,43 @@ void block::prompt_pending_crash_reports()
 	{
 		ShellExecuteW(nullptr, L"open", crash_dir().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 
-		char url[512];
+		auto url_encode = [](const std::string &s) {
+			std::string out;
+			out.reserve(s.size() * 3);
+			for (unsigned char c : s)
+			{
+				if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~')
+					out.push_back(static_cast<char>(c));
+				else if (c == ' ')
+					out += "%20";
+				else if (c == '\n')
+					out += "%0A";
+				else
+				{
+					char hex[4];
+					sprintf_s(hex, "%%%02X", c);
+					out += hex;
+				}
+			}
+			return out;
+		};
+
+		const std::string title = "Crash report — Block " BLOCK_VERSION_STRING;
+		std::string body =
+			"### Environment\n"
+			"- Block version: " BLOCK_VERSION_STRING "\n"
+			"- Viewer: " + viewer_name + "\n"
+			"- Dump: " + (dump_hint.empty() ? std::string("%LOCALAPPDATA%\\Block\\crashes\\") : dump_hint) + "\n\n"
+			"### Steps to reproduce\n"
+			"1. ...\n\n"
+			"### Notes\n"
+			"Attach the matching `.dmp` + `.txt` from the crashes folder.\n";
+
+		char url[4096];
 		sprintf_s(url,
-			"https://github.com/ape-squared/Block/issues/new?title=Crash%%20report&body=Block%%20version%%3A%%20%s%%0A%%0ASteps%%3A%%0A1.%%20...%%0A%%0AAttach%%20the%%20.dmp%%20%%2B%%20.txt%%20from%%20%%25LOCALAPPDATA%%25%%5CBlock%%5Ccrashes%%5C",
-			BLOCK_VERSION_STRING);
+			"https://github.com/ape-squared/Block/issues/new?title=%s&body=%s",
+			url_encode(title).c_str(),
+			url_encode(body).c_str());
 		ShellExecuteA(nullptr, "open", url, nullptr, nullptr, SW_SHOWNORMAL);
 	}
 }
