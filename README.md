@@ -16,7 +16,7 @@ Post-processing for Second Life viewers (OpenGL) on Windows, plus an experimenta
 > This software is not provided, endorsed, or supported by Linden Lab, the makers of Second Life.  
 > Not affiliated with ReShade or GShade.
 
-[Why Block](#why-block) · [What works today](#what-works-today) · [Using Block](#using-block) · [Build](#build) · [Updates](#updates) · [Contributing](#contributing) · [Docs](#docs)
+[Why Block](#why-block) · [Block vs others](#block-vs-others) · [What works today](#what-works-today) · [Using Block](#using-block) · [Build](#build) · [Updates](#updates) · [Contributing](#contributing) · [Docs](#docs)
 
 ---
 
@@ -38,6 +38,28 @@ Post-processing for Second Life viewers (OpenGL) on Windows, plus an experimenta
 | **Faster preset UX** | Favorites / recent, pin effects, pause FX when unfocused |
 | **Safe addons** | OpenGL installs skip DXGI / DLSS / renodx; pick what you load |
 | **One key overlay** | `Shift`+`B` — input blocked from the SL UI while open |
+
+## Block vs others
+
+Block is for **Second Life OpenGL viewers** with the **same ReShade FX / GShade presets** people already use — but as an **open-source** injector you can audit, build, and contribute to.
+
+| | **Block** | **GShade** | **ReShade** | **vkShade / vkBasalt** |
+|--|-----------|------------|-------------|-------------------------|
+| **What it is** | Open-source SL-first injector + Setup | Closed-source ReShade fork + installer ecosystem | Upstream open-source injector (any game) | Linux Vulkan post-FX layers |
+| **Source** | Public ([this repo](https://github.com/ape-squared/Block)) | Injector closed; shaders/presets on GitHub | Public | Public |
+| **SL OpenGL (Firestorm, Alchemy, BD, …)** | Yes — Setup + `opengl32.dll` | Yes — primary SL package today | Works if you install manually | No OpenGL injector |
+| **Runs your GShade / Heard presets** | Yes (wires GShade paths when present) | Yes (ships / manages packs) | Often needs macros / paths tweaked | FX subset on Vulkan only |
+| **GShade look macros (`__GSHADE__`, dither, DEPTH_II)** | Built in | Built in | Not by default | N/A / limited |
+| **Honest FX cost + Trim heavy** | Yes | Limited / different UX | GPU stats available; no Block Trim | Different tooling |
+| **Depth persist + Depth OK strip** | Yes | Manual / per-session for some viewers | Generic Depth addon | WIP / limited depth |
+| **Overlay key / SL click-through** | `Shift`+`B`, blocks input to SL UI | GShade overlay | Home / configurable | Layer-specific |
+| **Forced updates / closed control panel** | No — GitHub Releases + optional OTA banner | Installer / control panel ecosystem | ReShade updater optional | Distro / AUR style |
+| **AI-generated contributions** | Not accepted ([policy](docs/AI_POLICY.md)) | N/A | Upstream norms | Upstream norms |
+| **Licence (runtime)** | BSD-2-Clause (see [NOTICE](NOTICE.md)) | Proprietary injector + mixed shaders | BSD-3-Clause | BSD-2 / zlib-family |
+
+**In one line:** use **GShade** if you want their packaged installer and closed runtime; use **ReShade** for generic games; use **Block** if you want an **open, SL-oriented** injector that aims for **GShade look parity**, **honest cost**, and **contributor-friendly** releases.
+
+Block **does not replace** GShade’s shader/preset library — when GShade is installed, Setup points Block at those shaders and presets. We are **not affiliated** with ReShade or GShade.
 
 ## What works today
 
