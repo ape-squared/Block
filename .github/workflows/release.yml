@@ -34,19 +34,49 @@ jobs:
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "tag=v$V" >> "$GITHUB_OUTPUT"
 
+      - name: Extract changelog section
+        id: notes
+        env:
+          V: ${{ steps.ver.outputs.version }}
+        run: |
+          python3 <<'PY'
+          import pathlib, os, re
+          v = os.environ["V"]
+          text = pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8")
+          pat = rf"(?ms)^## \[{re.escape(v)}\][^\n]*\n(.*?)(?=^## \[|\Z)"
+          m = re.search(pat, text)
+          body = m.group(1).strip() if m else ""
+          pathlib.Path("release_section.md").write_text(body + "\n", encoding="utf-8")
+          def first_bullets(section_title, limit=2):
+              sm = re.search(rf"(?ms)^### {section_title}\n(.*?)(?=^### |\Z)", body)
+              if not sm:
+                  return []
+              return re.findall(r"^- \*\*([^*]+)\*\*", sm.group(1))[:limit]
+          bits = []
+          for title in ("Added", "Changed", "Improved"):
+              names = first_bullets(title)
+              if names:
+                  bits.append(f"{title}: " + ", ".join(names))
+          notes = f"Block {v} — " + "; ".join(bits) if bits else f"Block {v} — see CHANGELOG.md on the release page."
+          if len(notes) > 280:
+              notes = notes[:277] + "..."
+          pathlib.Path("ota_notes.txt").write_text(notes, encoding="utf-8")
+          print(notes)
+          PY
+
       - name: Write website/latest.json
         run: |
           V="${{ steps.ver.outputs.version }}"
           TAG="${{ steps.ver.outputs.tag }}"
+          NOTES=$(cat ota_notes.txt | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().strip()))')
           cat > website/latest.json <<EOF
           {
             "version": "$V",
             "tag": "$TAG",
             "url": "https://github.com/ape-squared/Block/releases/tag/$TAG",
-            "notes": "Block $V — see the release page for notes."
+            "notes": $NOTES
           }
           EOF
-          # Keep product header in sync reminder in job summary
           echo "Bump third_party/reshade/include/block_version.h to $V before tagging." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Commit latest.json (if changed)
@@ -61,21 +91,33 @@ jobs:
             git push origin HEAD:main || true
           fi
 
+      - name: Build release body
+        run: |
+          V="${{ steps.ver.outputs.version }}"
+          {
+            echo "## Block ${V}"
+            echo
+            echo "**Windows (supported):** download the zip → run **BlockSetup.exe** → pick Firestorm, Alchemy, Black Dragon, or another OpenGL viewer → **Shift+B**."
+            echo
+            echo "**Linux:** Vulkan post-processing layer builds with Meson (see \`docs/PLATFORMS.md\`). Not an OpenGL SL injector yet."
+            echo
+            echo "**macOS:** not supported yet — a future Metal rebuild (not this zip)."
+            echo
+            echo "---"
+            echo
+            cat release_section.md
+            echo
+            echo "---"
+            echo
+            echo "Full notes: \`CHANGELOG.md\`. OTA channel: https://ape-squared.github.io/Block/latest.json"
+            echo
+            echo "Viewers: \`docs/VIEWERS.md\` · Platforms: \`docs/PLATFORMS.md\` · AI policy: \`docs/AI_POLICY.md\`"
+          } > release_body.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: Block ${{ steps.ver.outputs.version }}
-          generate_release_notes: true
-          body: |
-            ## Block ${{ steps.ver.outputs.version }}
-
-            **Windows (supported):** download the zip → run **BlockSetup.exe** → pick Firestorm, Alchemy, Black Dragon, or another OpenGL viewer → **Shift+B**.
-
-            **Linux:** Vulkan post-processing layer builds with Meson (see `docs/PLATFORMS.md`). Not an OpenGL SL injector yet.
-
-            **macOS:** not supported yet — a future Metal rebuild (not this zip).
-
-            OTA channel: https://ape-squared.github.io/Block/latest.json
-
-            Viewers: `docs/VIEWERS.md` · Platforms: `docs/PLATFORMS.md` · AI policy: `docs/AI_POLICY.md`
+          body_path: release_body.md
+          generate_release_notes: false

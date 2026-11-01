@@ -1,6 +1,6 @@
 {
-  "version": "0.3.2",
-  "tag": "v0.3.2",
-  "url": "https://github.com/ape-squared/Block/releases/tag/v0.3.2",
-  "notes": "Block 0.3.2 — Depth II, depth persist/check, favorites/recent, pause when unfocused, pin effects, Trim tip, safer addons catalog."
+  "version": "0.3.3",
+  "tag": "v0.3.3",
+  "url": "https://github.com/ape-squared/Block/releases/tag/v0.3.3",
+  "notes": "Block 0.3.3 — Added: Vulkan depth/multi-technique/uniforms, input capture, hot-reload, HDR option, overlay favorites. Changed: GShade packs as normal presets, Block branding. Improved: FX images, Win32 input, Setup/OTA notes. See CHANGELOG.md."
 }

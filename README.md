@@ -23,7 +23,7 @@ Post-processing for Second Life viewers (OpenGL) on Windows, plus an experimenta
 **Stack colour grading, bloom, sharpening and more — and see the cost in milliseconds.**  
 **Firestorm, Alchemy, Black Dragon, and other OpenGL SL viewers on Windows today.**
 
-> **Status:** early (0.x). Current release is **[v0.3.2](https://github.com/ape-squared/Block/releases/tag/v0.3.2)**. OpenGL Setup path is supported on Firestorm, Alchemy, and Black Dragon. Linux builds the Vulkan layer (Meson). See [docs/VIEWERS.md](docs/VIEWERS.md) and [docs/PLATFORMS.md](docs/PLATFORMS.md).
+> **Status:** early (0.x). Current release is **[v0.3.3](https://github.com/ape-squared/Block/releases/tag/v0.3.3)**. OpenGL Setup path is supported on Firestorm, Alchemy, and Black Dragon. Linux builds the Vulkan layer (Meson). See [docs/VIEWERS.md](docs/VIEWERS.md) and [docs/PLATFORMS.md](docs/PLATFORMS.md).
 
 > **Human craft only.** We do not accept AI-generated contributions. PRs run authorship checks. Read [docs/AI_POLICY.md](docs/AI_POLICY.md).
 
