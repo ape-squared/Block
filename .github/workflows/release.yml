@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version without v prefix (e.g. 0.1.1). Uses VERSION file if empty."
+        required: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            V="${GITHUB_REF_NAME#v}"
+          elif [ -n "${{ inputs.version }}" ]; then
+            V="${{ inputs.version }}"
+          else
+            V=$(tr -d ' \r\n' < VERSION)
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "tag=v$V" >> "$GITHUB_OUTPUT"
+
+      - name: Write website/latest.json
+        run: |
+          V="${{ steps.ver.outputs.version }}"
+          TAG="${{ steps.ver.outputs.tag }}"
+          cat > website/latest.json <<EOF
+          {
+            "version": "$V",
+            "tag": "$TAG",
+            "url": "https://github.com/ape-squared/Block/releases/tag/$TAG",
+            "notes": "Block $V — see the release page for notes."
+          }
+          EOF
+          # Keep product header in sync reminder in job summary
+          echo "Bump third_party/reshade/include/block_version.h to $V before tagging." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit latest.json (if changed)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add website/latest.json
+          if git diff --staged --quiet; then
+            echo "latest.json unchanged"
+          else
+            git commit -m "chore: publish latest.json for ${{ steps.ver.outputs.tag }}"
+            git push origin HEAD:main || true
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: Block ${{ steps.ver.outputs.version }}
+          generate_release_notes: true
+          body: |
+            ## Block ${{ steps.ver.outputs.version }}
+
+            **Windows (supported):** download the zip → run **BlockSetup.exe** → pick Firestorm, Alchemy, Black Dragon, or another OpenGL viewer → **Shift+B**.
+
+            **Linux:** Vulkan post-processing layer builds with Meson (see `docs/PLATFORMS.md`). Not an OpenGL SL injector yet.
+
+            **macOS:** coming soon — future Metal rebuild of Block (not this zip).
+
+            OTA channel: https://ape-squared.github.io/Block/latest.json
+
+            Viewers: `docs/VIEWERS.md` · Platforms: `docs/PLATFORMS.md` · AI policy: `docs/AI_POLICY.md`

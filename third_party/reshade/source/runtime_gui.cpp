@@ -8,6 +8,7 @@
 #include "runtime.hpp"
 #include "runtime_internal.hpp"
 #include "version.h"
+#include <block_version.h>
 #include "dll_log.hpp"
 #include "dll_resources.hpp"
 #include "ini_file.hpp"
@@ -329,7 +330,7 @@ void reshade::runtime::load_config_gui(const ini_file &config)
 	config.get("STYLE", "EditorStyleIndex", _editor_style_index);
 	config.get("STYLE", "Font", _font_path);
 	config.get("STYLE", "FontSize", _font_size);
-	if (!config.get("STYLE", "FontScale", _imgui_context->Style.FontScaleMain) && _font_size == 13.0f)
+	if (!config.get("STYLE", "FontScale", _imgui_context->Style.FontScaleMain) && (_font_size == 13.0f || _font_size == 18.0f))
 		_imgui_context->Style.FontScaleMain = 0.0f;
 	config.get("STYLE", "FPSScale", _fps_scale);
 	config.get("STYLE", "FrameRounding", imgui_style.FrameRounding);
@@ -485,54 +486,65 @@ void reshade::runtime::load_custom_style()
 		ImGui::StyleColorsLight(&_imgui_context->Style);
 		break;
 	case 2:
-		// Block Signal lime (#D4FF3F) as accent only ? fills stay dark so light text stays readable.
-		colors[ImGuiCol_Text] = ImVec4(0.96f, 0.96f, 0.94f, 1.00f);
-		colors[ImGuiCol_TextDisabled] = ImVec4(0.55f, 0.55f, 0.50f, 1.00f);
-		colors[ImGuiCol_WindowBg] = ImVec4(0.10f, 0.10f, 0.10f, 0.98f);
-		colors[ImGuiCol_ChildBg] = ImVec4(0.12f, 0.12f, 0.12f, 0.00f);
-		colors[ImGuiCol_PopupBg] = ImVec4(0.10f, 0.10f, 0.10f, 0.96f);
-		colors[ImGuiCol_Border] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.28f);
-		colors[ImGuiCol_FrameBg] = ImVec4(0.16f, 0.16f, 0.15f, 1.00f);
-		colors[ImGuiCol_FrameBgHovered] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.18f);
-		colors[ImGuiCol_FrameBgActive] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.28f);
-		colors[ImGuiCol_TitleBg] = ImVec4(0.12f, 0.12f, 0.11f, 1.00f);
-		colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.12f, 0.12f, 0.11f, 0.75f);
-		colors[ImGuiCol_TitleBgActive] = ImVec4(0.16f, 0.17f, 0.12f, 1.00f);
-		colors[ImGuiCol_MenuBarBg] = ImVec4(0.14f, 0.14f, 0.13f, 1.00f);
-		colors[ImGuiCol_ScrollbarBg] = ImVec4(0.10f, 0.10f, 0.10f, 1.00f);
-		colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.35f);
-		colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.55f);
-		colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.75f);
-		colors[ImGuiCol_CheckMark] = ImVec4(0.831373f, 1.000000f, 0.247059f, 1.00f);
-		colors[ImGuiCol_SliderGrab] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.85f);
-		colors[ImGuiCol_SliderGrabActive] = ImVec4(0.831373f, 1.000000f, 0.247059f, 1.00f);
-		colors[ImGuiCol_Button] = ImVec4(0.20f, 0.22f, 0.14f, 1.00f);
-		colors[ImGuiCol_ButtonHovered] = ImVec4(0.28f, 0.32f, 0.14f, 1.00f);
-		colors[ImGuiCol_ButtonActive] = ImVec4(0.34f, 0.40f, 0.12f, 1.00f);
-		colors[ImGuiCol_Header] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.16f);
-		colors[ImGuiCol_HeaderHovered] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.26f);
-		colors[ImGuiCol_HeaderActive] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.36f);
-		colors[ImGuiCol_Separator] = ImVec4(0.35f, 0.35f, 0.32f, 0.60f);
-		colors[ImGuiCol_SeparatorHovered] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.50f);
-		colors[ImGuiCol_SeparatorActive] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.80f);
-		colors[ImGuiCol_ResizeGrip] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.20f);
-		colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.55f);
-		colors[ImGuiCol_ResizeGripActive] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.85f);
-		colors[ImGuiCol_Tab] = colors[ImGuiCol_Button];
-		colors[ImGuiCol_TabSelected] = colors[ImGuiCol_ButtonActive];
-		colors[ImGuiCol_TabSelectedOverline] = ImVec4(0.831373f, 1.000000f, 0.247059f, 1.00f);
-		colors[ImGuiCol_TabHovered] = colors[ImGuiCol_ButtonHovered];
-		colors[ImGuiCol_TabDimmed] = ImLerp(colors[ImGuiCol_Tab], colors[ImGuiCol_TitleBg], 0.80f);
-		colors[ImGuiCol_TabDimmedSelected] = ImLerp(colors[ImGuiCol_TabSelected], colors[ImGuiCol_TitleBg], 0.40f);
-		colors[ImGuiCol_TabDimmedSelectedOverline] = colors[ImGuiCol_TabSelectedOverline];
-		colors[ImGuiCol_DockingPreview] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.35f);
-		colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
-		colors[ImGuiCol_PlotLines] = ImVec4(0.80f, 0.80f, 0.75f, 0.70f);
-		colors[ImGuiCol_PlotLinesHovered] = ImVec4(0.831373f, 1.000000f, 0.247059f, 1.00f);
-		colors[ImGuiCol_PlotHistogram] = ImVec4(0.80f, 0.80f, 0.75f, 0.70f);
-		colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.831373f, 1.000000f, 0.247059f, 1.00f);
-		colors[ImGuiCol_TextSelectedBg] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.30f);
+		{
+		// Block Signal lime #D4FF3F — stronger brand presence; fills stay dark for readable text.
+		constexpr ImVec4 lime(0.831373f, 1.000000f, 0.247059f, 1.00f);
+		constexpr ImVec4 lime28(0.831373f, 1.000000f, 0.247059f, 0.28f);
+		constexpr ImVec4 lime40(0.831373f, 1.000000f, 0.247059f, 0.40f);
+		constexpr ImVec4 lime55(0.831373f, 1.000000f, 0.247059f, 0.55f);
+		colors[ImGuiCol_Text] = ImVec4(0.96f, 0.97f, 0.92f, 1.00f);
+		colors[ImGuiCol_TextDisabled] = ImVec4(0.55f, 0.58f, 0.42f, 1.00f);
+		colors[ImGuiCol_WindowBg] = ImVec4(0.043f, 0.047f, 0.055f, 0.98f); // #0B0C0E
+		colors[ImGuiCol_ChildBg] = ImVec4(0.074f, 0.078f, 0.090f, 0.00f);
+		colors[ImGuiCol_PopupBg] = ImVec4(0.074f, 0.078f, 0.090f, 0.97f);
+		colors[ImGuiCol_Border] = lime40;
+		colors[ImGuiCol_BorderShadow] = ImVec4(0, 0, 0, 0);
+		colors[ImGuiCol_FrameBg] = ImVec4(0.106f, 0.114f, 0.129f, 1.00f); // #1B1D21
+		colors[ImGuiCol_FrameBgHovered] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.22f);
+		colors[ImGuiCol_FrameBgActive] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.35f);
+		colors[ImGuiCol_TitleBg] = ImVec4(0.043f, 0.047f, 0.055f, 1.00f);
+		colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.043f, 0.047f, 0.055f, 0.75f);
+		colors[ImGuiCol_TitleBgActive] = ImVec4(0.14f, 0.16f, 0.08f, 1.00f);
+		colors[ImGuiCol_MenuBarBg] = ImVec4(0.074f, 0.078f, 0.090f, 1.00f);
+		colors[ImGuiCol_ScrollbarBg] = ImVec4(0.043f, 0.047f, 0.055f, 1.00f);
+		colors[ImGuiCol_ScrollbarGrab] = lime40;
+		colors[ImGuiCol_ScrollbarGrabHovered] = lime55;
+		colors[ImGuiCol_ScrollbarGrabActive] = lime;
+		colors[ImGuiCol_CheckMark] = lime;
+		colors[ImGuiCol_SliderGrab] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.90f);
+		colors[ImGuiCol_SliderGrabActive] = lime;
+		colors[ImGuiCol_Button] = ImVec4(0.16f, 0.18f, 0.10f, 1.00f);
+		colors[ImGuiCol_ButtonHovered] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.45f);
+		colors[ImGuiCol_ButtonActive] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.70f);
+		colors[ImGuiCol_Header] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.22f);
+		colors[ImGuiCol_HeaderHovered] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.38f);
+		colors[ImGuiCol_HeaderActive] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.55f);
+		colors[ImGuiCol_Separator] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.22f);
+		colors[ImGuiCol_SeparatorHovered] = lime55;
+		colors[ImGuiCol_SeparatorActive] = lime;
+		colors[ImGuiCol_ResizeGrip] = lime28;
+		colors[ImGuiCol_ResizeGripHovered] = lime55;
+		colors[ImGuiCol_ResizeGripActive] = lime;
+		colors[ImGuiCol_Tab] = ImVec4(0.12f, 0.13f, 0.10f, 1.00f);
+		colors[ImGuiCol_TabHovered] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.40f);
+		colors[ImGuiCol_TabSelected] = ImVec4(0.22f, 0.26f, 0.10f, 1.00f);
+		colors[ImGuiCol_TabSelectedOverline] = lime;
+		colors[ImGuiCol_TabDimmed] = ImLerp(colors[ImGuiCol_Tab], colors[ImGuiCol_TitleBg], 0.70f);
+		colors[ImGuiCol_TabDimmedSelected] = ImLerp(colors[ImGuiCol_TabSelected], colors[ImGuiCol_TitleBg], 0.30f);
+		colors[ImGuiCol_TabDimmedSelectedOverline] = lime;
+		colors[ImGuiCol_DockingPreview] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.45f);
+		colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.074f, 0.078f, 0.090f, 1.00f);
+		colors[ImGuiCol_PlotLines] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.75f);
+		colors[ImGuiCol_PlotLinesHovered] = lime;
+		colors[ImGuiCol_PlotHistogram] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.85f);
+		colors[ImGuiCol_PlotHistogramHovered] = lime;
+		colors[ImGuiCol_TextSelectedBg] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.35f);
+		colors[ImGuiCol_NavCursor] = lime;
+		colors[ImGuiCol_NavWindowingHighlight] = ImVec4(0.831373f, 1.000000f, 0.247059f, 0.70f);
+		colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.04f, 0.05f, 0.04f, 0.55f);
+		colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.04f, 0.05f, 0.04f, 0.60f);
 		break;
+		}
 	case 5:
 		colors[ImGuiCol_Text] = ImColor(0xff969483);
 		colors[ImGuiCol_TextDisabled] = ImColor(0xff756e58);
@@ -1064,12 +1076,23 @@ void reshade::runtime::draw_gui()
 
 		if (show_spinner)
 		{
-			imgui::spinner((_effects.size() - _reload_remaining_effects) / float(_effects.size()), 16.0f * ImGui::GetFontSize() / 13, 10.0f * ImGui::GetFontSize() / 13);
+			ImGui::BeginGroup();
+			imgui::spinner((_effects.size() - _reload_remaining_effects) / float(_effects.size()), 18.0f * ImGui::GetFontSize() / 13, 5.0f * ImGui::GetFontSize() / 13);
+			ImGui::SameLine(0.0f, ImGui::GetFontSize() * 0.75f);
+			ImGui::BeginGroup();
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.831373f, 1.0f, 0.247059f, 1.0f));
+			ImGui::TextUnformatted("BLOCK");
+			ImGui::PopStyleColor();
+			ImGui::TextDisabled("Loading preset…");
+			ImGui::EndGroup();
+			ImGui::EndGroup();
 		}
 		else
 		{
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.831373f, 1.0f, 0.247059f, 1.0f));
 			ImGui::TextUnformatted("BLOCK");
-			ImGui::TextDisabled("Post-processing for OpenGL and Vulkan.");
+			ImGui::PopStyleColor();
+			ImGui::TextDisabled("Post-processing for Second Life viewers.");
 
 			ImGui::Spacing();
 
@@ -1077,9 +1100,9 @@ void reshade::runtime::draw_gui()
 			{
 				ImGui::ProgressBar((_effects.size() - _reload_remaining_effects) / float(_effects.size()), ImVec2(ImGui::GetContentRegionAvail().x, 0), "");
 				ImGui::SameLine(15);
-				ImGui::Text(_(
-					"Compiling (%zu effects remaining) ... "
-					"This might take a while. The application could become unresponsive for some time."),
+				ImGui::Text(
+					"Compiling (%zu effects remaining)… "
+					"This might take a while.",
 					_reload_remaining_effects.load());
 			}
 			else
@@ -1302,7 +1325,7 @@ void reshade::runtime::draw_gui()
 		const std::pair<std::string, void(runtime::*)()> overlay_callbacks[] = {
 			{ _("Home###home"), &runtime::draw_gui_home },
 #if RESHADE_ADDON
-			{ _("Addons###addons"), &runtime::draw_gui_addons },
+			{ _("Add-ons###addons"), &runtime::draw_gui_addons },
 #endif
 			{ _("Settings###settings"), &runtime::draw_gui_settings },
 			{ _("Statistics###statistics"), &runtime::draw_gui_statistics },
@@ -1528,6 +1551,29 @@ void reshade::runtime::draw_gui_home()
 	if (_performance_mode && _tutorial_index <= 3)
 		_tutorial_index = 4;
 
+	if (s_update_available)
+	{
+		ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.831f, 1.0f, 0.247f, 0.14f));
+		ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.831f, 1.0f, 0.247f, 0.85f));
+		if (ImGui::BeginChild("##block_update", ImVec2(0, ImGui::GetFrameHeightWithSpacing() * 2.2f), ImGuiChildFlags_Borders))
+		{
+			ImGui::TextColored(ImVec4(0.831f, 1.0f, 0.247f, 1.0f), "%s", _("There's a new Block update available."));
+			ImGui::Text("%s %u.%u.%u", _("Latest:"), s_latest_version[0], s_latest_version[1], s_latest_version[2]);
+			ImGui::SameLine();
+			if (ImGui::SmallButton(_("Open on GitHub")))
+			{
+				const char *url = s_update_url[0] != '\0' ? s_update_url : "https://github.com/ape-squared/block/releases";
+				utils::execute_command(std::string("cmd /c start \"\" \"") + url + "\"");
+			}
+			ImGui::SameLine();
+			if (ImGui::SmallButton(_("Dismiss")))
+				s_update_available = false;
+		}
+		ImGui::EndChild();
+		ImGui::PopStyleColor(2);
+		ImGui::Spacing();
+	}
+
 	const float auto_save_button_spacing = 2.0f;
 	const float button_width = 12.5f * ImGui::GetFontSize();
 
@@ -1549,19 +1595,20 @@ void reshade::runtime::draw_gui_home()
 
 		bool reload_preset = false;
 
+		// Block while compiling — rapid < > was nesting reload_effects and crashing Firestorm.
 		ImGui::BeginDisabled(is_loading());
 
 		if (ImGui::ArrowButtonEx("<", ImGuiDir_Left, ImVec2(button_height, button_height), ImGuiButtonFlags_NoNavFocus))
 			if (switch_to_next_preset(_current_preset_path.parent_path(), true))
 				reload_preset = true;
-		ImGui::SetItemTooltip(_("Previous preset"));
+		ImGui::SetItemTooltip(is_loading() ? "Wait for effects to finish compiling…" : _("Previous preset"));
 
 		ImGui::SameLine(0, button_spacing);
 
 		if (ImGui::ArrowButtonEx(">", ImGuiDir_Right, ImVec2(button_height, button_height), ImGuiButtonFlags_NoNavFocus))
 			if (switch_to_next_preset(_current_preset_path.parent_path(), false))
 				reload_preset = true;
-		ImGui::SetItemTooltip(_("Next preset"));
+		ImGui::SetItemTooltip(is_loading() ? "Wait for effects to finish compiling…" : _("Next preset"));
 
 		ImGui::SameLine();
 
@@ -1818,8 +1865,18 @@ void reshade::runtime::draw_gui_home()
 
 	if (_reload_remaining_effects != std::numeric_limits<size_t>::max())
 	{
-		ImGui::SetCursorPos(ImGui::GetWindowSize() * 0.5f - ImVec2(21, 21));
-		imgui::spinner((_effects.size() - _reload_remaining_effects) / float(_effects.size()), 16.0f * ImGui::GetFontSize() / 13, 10.0f * ImGui::GetFontSize() / 13);
+		const ImVec2 mid = ImGui::GetWindowSize() * 0.5f;
+		ImGui::SetCursorPos(mid - ImVec2(60, 28));
+		ImGui::BeginGroup();
+		imgui::spinner((_effects.size() - _reload_remaining_effects) / float(_effects.size()), 18.0f * ImGui::GetFontSize() / 13, 5.0f * ImGui::GetFontSize() / 13);
+		ImGui::SameLine(0.0f, 12.0f);
+		ImGui::BeginGroup();
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.831373f, 1.0f, 0.247059f, 1.0f));
+		ImGui::TextUnformatted("BLOCK");
+		ImGui::PopStyleColor();
+		ImGui::TextDisabled("Loading…");
+		ImGui::EndGroup();
+		ImGui::EndGroup();
 		return; // Cannot show techniques and variables while effects are loading, since they are being modified in other threads during that time
 	}
 
@@ -3134,8 +3191,18 @@ void reshade::runtime::draw_gui_log()
 }
 void reshade::runtime::draw_gui_about()
 {
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.831373f, 1.0f, 0.247059f, 1.0f));
 	ImGui::TextUnformatted("BLOCK");
-	ImGui::TextDisabled("Post-processing for OpenGL and Vulkan.");
+	ImGui::PopStyleColor();
+	ImGui::TextDisabled("Post-processing for Second Life viewers.");
+	ImGui::Text("%s %s", _("Version"), BLOCK_VERSION_STRING);
+	if (s_latest_version[0] != 0 || s_latest_version[1] != 0 || s_latest_version[2] != 0)
+		ImGui::TextDisabled("%s %u.%u.%u", _("Latest on GitHub:"), s_latest_version[0], s_latest_version[1], s_latest_version[2]);
+	if (s_update_available && ImGui::Button(_("Get update on GitHub")))
+	{
+		const char *url = s_update_url[0] != '\0' ? s_update_url : BLOCK_RELEASES_URL;
+		utils::execute_command(std::string("cmd /c start \"\" \"") + url + "\"");
+	}
 
 	ImGui::Separator();
 
@@ -3241,9 +3308,9 @@ void reshade::runtime::draw_gui_addons()
 	ini_file &config = global_config();
 
 	ImGui::PushTextWrapPos();
-	ImGui::TextUnformatted(_("Addons"));
+	ImGui::TextUnformatted("Add-ons");
 	ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-	ImGui::TextDisabled(_("? enable / disable like GShade; folder is gshade-addons"));
+	ImGui::TextDisabled("Enable / disable like GShade — folder is gshade-addons");
 	ImGui::PopTextWrapPos();
 	ImGui::Spacing();
 
@@ -3251,17 +3318,17 @@ void reshade::runtime::draw_gui_addons()
 	if (!addon_enabled)
 	{
 		ImGui::PushTextWrapPos();
-		ImGui::TextColored(COLOR_YELLOW, _("High network activity discovered.\nAll addons are disabled to prevent exploitation."));
+		ImGui::TextColored(COLOR_YELLOW, "High network activity discovered.\nAll add-ons are disabled to prevent exploitation.");
 		ImGui::PopTextWrapPos();
 		return;
 	}
 
 	ImGui::AlignTextToFramePadding();
-	ImGui::TextUnformatted(_("This build of Block has only limited addon functionality."));
+	ImGui::TextUnformatted("This build of Block has only limited add-on functionality.");
 #else
 	std::filesystem::path addon_search_path = L".\\gshade-addons";
 	config.get("ADDON", "AddonPath", addon_search_path);
-	if (imgui::directory_input_box(_("Addon path (gshade-addons)"), addon_search_path, _file_selection_path))
+	if (imgui::directory_input_box(_("Add-on search path"), addon_search_path, _file_selection_path))
 		config.set("ADDON", "AddonPath", addon_search_path);
 #endif
 
@@ -3277,10 +3344,10 @@ void reshade::runtime::draw_gui_addons()
 	{
 		ImGui::PushTextWrapPos();
 #if RESHADE_ADDON == 1
-		ImGui::TextColored(COLOR_YELLOW, _("Some addons were not loaded because this build of Block has only limited addon functionality."));
+		ImGui::TextColored(COLOR_YELLOW, _("Some add-ons were not loaded because this build of Block has only limited add-on functionality."));
 #else
 		ImGui::PushStyleColor(ImGuiCol_Text, COLOR_RED);
-		ImGui::TextUnformatted(_("There were errors loading some addons."));
+		ImGui::TextUnformatted(_("There were errors loading some add-ons."));
 		ImGui::TextUnformatted(_("Check the log for more details."));
 		ImGui::PopStyleColor();
 #endif
@@ -3418,7 +3485,7 @@ void reshade::runtime::draw_gui_addons()
 	ImGui::Spacing();
 
 	ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize(_("Open developer documentation")).x) / 2);
-	ImGui::TextLinkOpenURL(_("Open developer documentation"), "https://reshade.me/docs");
+	ImGui::TextLinkOpenURL("Block docs on GitHub", "https://github.com/ape-squared/Block/blob/main/docs/HANDBOOK.md");
 }
 #endif
 
@@ -4945,7 +5012,7 @@ void reshade::runtime::render_imgui_draw_data(api::command_list *cmd_list, ImDra
 	}
 
 #ifndef NDEBUG
-	cmd_list->begin_debug_event("ReShade overlay");
+	cmd_list->begin_debug_event("Block overlay");
 #endif
 
 	if (ImDrawIdx *idx_dst;

@@ -1,0 +1,71 @@
+name: Bug report
+description: Something broken in Block (viewer crash, overlay, Setup, layer)
+labels: ["bug"]
+body:
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to reproduce
+      description: What steps are required to reproduce the problem?
+      placeholder: |
+        1. Install with Block Setup into Firestorm-Releasex64
+        2. Launch viewer
+        3. Press Shift+B
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual behavior
+      description: What actually happened (error text, crash, blank overlay…).
+    validations:
+      required: true
+
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Backend
+      options:
+        - OpenGL (opengl32.dll / Firestorm)
+        - Vulkan (block.dll layer)
+        - Setup / tools only
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Viewer / app, OS, GPU
+      placeholder: Firestorm-Releasex64, Windows 11, RTX A4500 — Block 0.1.0 or commit hash
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Paste relevant log text (ReShade.log next to the viewer, or BLOCK_LOG_FILE).
+        Prefer text over screenshots of screenshots.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: attachments-note
+    attributes:
+      label: Screenshots (optional)
+      description: |
+        If you attach images, remember they are public. Do not upload passwords, session tokens, or private chat.
+    validations:
+      required: false

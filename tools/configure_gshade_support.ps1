@@ -119,25 +119,37 @@ Get-ChildItem $addonsRoot -File -ErrorAction SilentlyContinue |
     Remove-Item -LiteralPath $_.FullName -Force
   }
 
+# Match GShade search order exactly. Do NOT also load viewer-local reshade-shaders when
+# GShade is present — 60+ duplicate .fx names would compile twice and can bind the wrong file.
 $effectPaths = New-Object System.Collections.Generic.List[string]
 $texturePaths = New-Object System.Collections.Generic.List[string]
 if ($hasGShade) {
   $effectPaths.Add((Join-Path $shaders "Shaders"))
+  if (Test-Path "C:\Users\Public\GShade Custom Shaders\Shaders") {
+    $effectPaths.Add("C:\Users\Public\GShade Custom Shaders\Shaders")
+  }
   $cs = Join-Path $shaders "ComputeShaders"
   if (Test-Path $cs) { $effectPaths.Add($cs) }
+  if (Test-Path "C:\Users\Public\GShade Custom Shaders\ComputeShaders") {
+    $effectPaths.Add("C:\Users\Public\GShade Custom Shaders\ComputeShaders")
+  }
   $texturePaths.Add((Join-Path $shaders "Textures"))
+  if (Test-Path "C:\Users\Public\GShade Custom Shaders\Textures") {
+    $texturePaths.Add("C:\Users\Public\GShade Custom Shaders\Textures")
+  }
+} else {
+  foreach ($p in @(
+    "C:\Users\Public\GShade Custom Shaders\Shaders",
+    "C:\Users\Public\GShade Custom Shaders\ComputeShaders"
+  )) { if (Test-Path $p) { $effectPaths.Add($p) } }
+  if (Test-Path "C:\Users\Public\GShade Custom Shaders\Textures") {
+    $texturePaths.Add("C:\Users\Public\GShade Custom Shaders\Textures")
+  }
+  $localShaders = Join-Path $ViewerDir "reshade-shaders\Shaders"
+  $localTex = Join-Path $ViewerDir "reshade-shaders\Textures"
+  if (Test-Path $localShaders) { $effectPaths.Add("$localShaders\**") } else { $effectPaths.Add(".\reshade-shaders\Shaders\**") }
+  if (Test-Path $localTex) { $texturePaths.Add("$localTex\**") } else { $texturePaths.Add(".\reshade-shaders\Textures\**") }
 }
-foreach ($p in @(
-  "C:\Users\Public\GShade Custom Shaders\Shaders",
-  "C:\Users\Public\GShade Custom Shaders\ComputeShaders"
-)) { if (Test-Path $p) { $effectPaths.Add($p) } }
-if (Test-Path "C:\Users\Public\GShade Custom Shaders\Textures") {
-  $texturePaths.Add("C:\Users\Public\GShade Custom Shaders\Textures")
-}
-$localShaders = Join-Path $ViewerDir "reshade-shaders\Shaders"
-$localTex = Join-Path $ViewerDir "reshade-shaders\Textures"
-if (Test-Path $localShaders) { $effectPaths.Add("$localShaders\**") } else { $effectPaths.Add(".\reshade-shaders\Shaders\**") }
-if (Test-Path $localTex) { $texturePaths.Add("$localTex\**") } else { $texturePaths.Add(".\reshade-shaders\Textures\**") }
 
 $iniPath = Join-Path $ViewerDir "ReShade.ini"
 $payloadIni = Join-Path $root "payload\ReShade.ini"
@@ -174,27 +186,88 @@ if (-not $ini) { $ini = Get-Content $payloadIni -Raw }
 
 if (-not $preferredPreset) { throw "No preset INI found under $presetsRoot" }
 
-# Persistent compile cache (survives viewer restarts; faster on slow PCs)
-$cacheRoot = Join-Path $env:LOCALAPPDATA "Block\cache"
-New-Item -ItemType Directory -Force -Path $cacheRoot | Out-Null
+# Prefer GShade's Intermediate folder so we reuse the same compiled shaders as GShade (look + speed).
+$gshadeIntermediate = Join-Path $shaders "Intermediate"
+if ($hasGShade -and (Test-Path $gshadeIntermediate)) {
+  $cacheRoot = $gshadeIntermediate
+} else {
+  $cacheRoot = Join-Path $env:LOCALAPPDATA "Block\cache"
+  New-Item -ItemType Directory -Force -Path $cacheRoot | Out-Null
+}
 
 # Optional DisabledAddons from env (comma-separated), else keep existing
 $disabledAddons = Get-IniKey $iniPath "DisabledAddons"
 if (-not $disabledAddons) { $disabledAddons = "" }
 
+# Visual parity with GShade:
+# - Same EffectSearchPaths order (no duplicate viewer-local shaders).
+# - Same Intermediate cache, UseDithering, EffectFrameDelay, DEPTH heuristics.
+# - Never force PerformanceMode (kills uniform parity with GShade).
+# - Block injects __GSHADE__ + GSHADE_DITHER in the FX compiler.
 $ini = Set-IniValue $ini "GENERAL" "EffectSearchPaths" ($effectPaths -join ",")
 $ini = Set-IniValue $ini "GENERAL" "TextureSearchPaths" ($texturePaths -join ",")
 $ini = Set-IniValue $ini "GENERAL" "PresetPath" $preferredPreset
 $ini = Set-IniValue $ini "GENERAL" "IntermediateCachePath" $cacheRoot
-$ini = Set-IniValue $ini "GENERAL" "SkipLoadingDisabledEffects" "1"
+$ini = Set-IniValue $ini "GENERAL" "PreprocessorDefinitions" ""
+$ini = Set-IniValue $ini "GENERAL" "UseDithering" "1"
 $ini = Set-IniValue $ini "GENERAL" "NoReloadOnInit" "0"
-$ini = Set-IniValue $ini "GENERAL" "PerformanceMode" "1"
+$ini = Set-IniValue $ini "GENERAL" "NoDebugInfo" "1"
+$ini = Set-IniValue $ini "GENERAL" "NoEffectCache" "0"
+$ini = Set-IniValue $ini "GENERAL" "SkipLoadingDisabledEffects" "0"
+$ini = Set-IniValue $ini "GENERAL" "PerformanceMode" "0"
+$ini = Set-IniValue $ini "GENERAL" "EffectFrameDelay" "500"
+$ini = Set-IniValue $ini "GENERAL" "PresetTransitionDuration" "0"
+
+# Copy Generic Depth heuristics from GShade.ini (MXAO / DOF look wrong without these).
+function Get-IniSectionKey([string]$file, [string]$section, [string]$key) {
+  if (-not (Test-Path -LiteralPath $file)) { return $null }
+  $raw = Get-Content -LiteralPath $file -Raw
+  $sectionPattern = "(?ms)^\[$([regex]::Escape($section))\].*?(?=^\[|\z)"
+  $sm = [regex]::Match($raw, $sectionPattern)
+  if (-not $sm.Success) { return $null }
+  $km = [regex]::Match($sm.Value, "(?m)^\s*$([regex]::Escape($key))\s*=\s*(.+)$")
+  if ($km.Success) { return $km.Groups[1].Value.Trim() }
+  return $null
+}
+$gshadeIniFile = Join-Path $ViewerDir "GShade.ini"
+if (Test-Path $gshadeIniFile) {
+  foreach ($sec in @("DEPTH", "DEPTH_II")) {
+    foreach ($key in @("DrawStatsHeuristic", "FilterFormat", "UseAspectRatioHeuristics", "UseDefaultDepth", "DepthCopyBeforeClears")) {
+      $v = Get-IniSectionKey $gshadeIniFile $sec $key
+      if ($null -ne $v -and $v -ne "") {
+        $ini = Set-IniValue $ini $sec $key $v
+      }
+    }
+  }
+} else {
+  # Sensible SL defaults matching typical GShade Firestorm installs
+  $ini = Set-IniValue $ini "DEPTH" "DrawStatsHeuristic" "2"
+  $ini = Set-IniValue $ini "DEPTH" "FilterFormat" "5"
+  $ini = Set-IniValue $ini "DEPTH" "UseAspectRatioHeuristics" "3"
+  $ini = Set-IniValue $ini "DEPTH" "UseDefaultDepth" "0"
+}
 $ini = Set-IniValue $ini "ADDON" "AddonPath" $addonsRoot
 $ini = Set-IniValue $ini "ADDON" "DisabledAddons" $disabledAddons
+# 2 = block all input while overlay is visible (clicks must not hit the SL UI underneath)
+$ini = Set-IniValue $ini "INPUT" "InputProcessing" "2"
+$ini = Set-IniValue $ini "INPUT" "ForceShortcutModifiers" "1"
 $ini = Set-IniValue $ini "INPUT" "KeyOverlay" "66,0,1,0"
 $ini = Set-IniValue $ini "STYLE" "StyleIndex" "2"
+$ini = Set-IniValue $ini "STYLE" "FontSize" "18.000000"
+$ini = Set-IniValue $ini "STYLE" "EditorFontSize" "18.000000"
+$ini = Set-IniValue $ini "STYLE" "FontScale" "1.000000"
+$ini = Set-IniValue $ini "OVERLAY" "VariableListHeight" "280.000000"
+$ini = Set-IniValue $ini "OVERLAY" "VariableListUseSliders" "1"
+$ini = Set-IniValue $ini "OVERLAY" "TutorialProgress" "4"
 
 Set-Content -Path $iniPath -Value $ini -NoNewline
+
+# Only clear Block's private cache — never wipe GShade's Intermediate (tens of thousands of files).
+$blockCache = Join-Path $env:LOCALAPPDATA "Block\cache"
+if ((Test-Path $blockCache) -and ($cacheRoot -eq $blockCache)) {
+  Get-ChildItem $blockCache -File -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+  Write-Host "Cleared Block effect cache: $blockCache"
+}
 
 $heardCount = @(Get-ChildItem (Join-Path $presetsRoot "Heard") -Filter "*.ini" -ErrorAction SilentlyContinue).Count
 $presetCount = @(Get-ChildItem $presetsRoot -Recurse -Filter "*.ini" -ErrorAction SilentlyContinue).Count
@@ -205,9 +278,10 @@ Write-Host "  PresetPath -> $preferredPreset"
 Write-Host "  Heard presets: $heardCount"
 Write-Host "  Presets total: $presetCount under $presetsRoot"
 Write-Host "  AddonPath  -> $addonsRoot ($addonCount addon file(s))"
-Write-Host "  Perf       -> PerformanceMode=1, SkipLoadingDisabledEffects=1"
+Write-Host "  Look       -> GShade parity (PerformanceMode=0, UseDithering=1, DEPTH from GShade.ini, FontSize=18)"
 Write-Host "  Cache      -> $cacheRoot"
-if ($hasGShade) { Write-Host "  Shaders    -> $shaders (+ custom/local)" }
+Write-Host "  Paths      -> $($effectPaths -join ' | ')"
+if ($hasGShade) { Write-Host "  Shaders    -> $shaders (+ custom; viewer-local reshade-shaders skipped)" }
 
 # Keep staged OpenGL pack defaults from payload (do not overwrite with viewer-absolute paths)
 $runtimeIni = Join-Path $root "build-win\runtime\opengl\ReShade.ini"

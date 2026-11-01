@@ -861,22 +861,25 @@ void reshade::runtime::on_present()
 			if (_input->is_key_pressed(_reload_key_data, _force_shortcut_modifiers))
 				reload_effects();
 
-			if (const bool reversed = _input->is_key_pressed(_prev_preset_key_data, _force_shortcut_modifiers);
-				reversed || _input->is_key_pressed(_next_preset_key_data, _force_shortcut_modifiers))
+			// Ignore preset hotkeys while effects are compiling — same nest-reload crash path as spam-clicking arrows.
+			if (!is_loading())
 			{
-				// The preset shortcut key was pressed down, so start the transition
-				if (switch_to_next_preset(_current_preset_path.parent_path(), reversed))
-					save_config();
-			}
-			else
-			{
-				for (const preset_shortcut &shortcut : _preset_shortcuts)
+				if (const bool reversed = _input->is_key_pressed(_prev_preset_key_data, _force_shortcut_modifiers);
+					reversed || _input->is_key_pressed(_next_preset_key_data, _force_shortcut_modifiers))
 				{
-					if (_input->is_key_pressed(shortcut.key_data, _force_shortcut_modifiers))
+					if (switch_to_next_preset(_current_preset_path.parent_path(), reversed))
+						save_config();
+				}
+				else
+				{
+					for (const preset_shortcut &shortcut : _preset_shortcuts)
 					{
-						if (switch_to_next_preset(shortcut.preset_path))
-							save_config();
-						break;
+						if (_input->is_key_pressed(shortcut.key_data, _force_shortcut_modifiers))
+						{
+							if (switch_to_next_preset(shortcut.preset_path))
+								save_config();
+							break;
+						}
 					}
 				}
 			}
@@ -1154,6 +1157,19 @@ void reshade::runtime::load_current_preset()
 	preset.get({}, "PreprocessorDefinitions", preset_preprocessor_definitions[{}]);
 	for (const effect &effect : _effects)
 		preset.get(effect.source_file.filename().u8string(), "PreprocessorDefinitions", preset_preprocessor_definitions[effect.source_file.filename().u8string()]);
+
+	// Fast preset spam nested reload_effects() while compile workers were still running and
+	// crashed the viewer. Skip while a count-down reload is in flight (remaining > 0).
+	// Do NOT skip when remaining == 0 — that is the end-of-reload apply path.
+	const bool effects_compiling =
+		_reload_remaining_effects != 0 &&
+		_reload_remaining_effects != std::numeric_limits<size_t>::max();
+	if (effects_compiling)
+	{
+		_preset_preprocessor_definitions = std::move(preset_preprocessor_definitions);
+		// update_effects() calls load_current_preset() again when this reload finishes.
+		return;
+	}
 
 	// Recompile effects if preprocessor definitions have changed or running in performance mode (in which case all preset values are compile-time constants)
 	if (_reload_remaining_effects != 0 && (!_is_in_preset_transition || _last_preset_switching_time == _last_present_time)) // ... unless this is the 'load_current_preset' call in 'update_effects' or the call every frame during preset transition
@@ -1514,6 +1530,8 @@ bool reshade::runtime::load_effect(const std::filesystem::path &source_file, con
 	attributes += "color_format=" + std::to_string(static_cast<uint32_t>(_effect_permutations[permutation_index].color_format)) + ';';
 	attributes += "version=" + std::to_string(VERSION_MAJOR * 10000 + VERSION_MINOR * 100 + VERSION_REVISION) + ';';
 	attributes += "performance_mode=" + std::string(_performance_mode ? "1" : "0") + ';';
+	// Bust effect cache when GShade-compat macros change (see load_effect macros below).
+	attributes += "__GSHADE__=1;GSHADE_DITHER=1;";
 	attributes += "vendor=" + std::to_string(_vendor_id) + ';';
 	attributes += "device=" + std::to_string(_device_id) + ';';
 
@@ -1663,6 +1681,11 @@ bool reshade::runtime::load_effect(const std::filesystem::path &source_file, con
 		pp.add_macro_definition("BUFFER_COLOR_SPACE", std::to_string(static_cast<uint32_t>(_effect_permutations[permutation_index].color_space)));
 		pp.add_macro_definition("BUFFER_COLOR_FORMAT", std::to_string(static_cast<uint32_t>(_effect_permutations[permutation_index].color_format)));
 		pp.add_macro_definition("BUFFER_COLOR_BIT_DEPTH", std::to_string(api::format_bit_depth(_effect_permutations[permutation_index].color_format)));
+
+		// GShade64.dll injects these for its shader pack. Without them, Heard / GShade
+		// presets skip TriDither paths and KeepUI branches — looks different from Firestorm+GShade.
+		pp.add_macro_definition("__GSHADE__", "1");
+		pp.add_macro_definition("GSHADE_DITHER", "1");
 
 		for (const std::pair<std::string, std::string> &definition : preprocessor_definitions)
 		{

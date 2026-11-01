@@ -131,7 +131,7 @@ namespace reshade::imgui
 	void image_with_checkerboard_background(ImTextureID user_texture_id, const ImVec2 &size, ImU32 tint_col = 0xFFFFFFFF);
 
 	/// <summary>
-	/// Adds a spinner in style of the ReShade logo, to indicate loading progress.
+	/// Adds a Block-themed spinner to indicate loading progress.
 	/// </summary>
 	/// <param name="value">Percentage value between zero and one for a standard progress indicator, or negative for a spinning animation.</param>
 	/// <param name="radius">Radius of the circle.</param>

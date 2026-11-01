@@ -22,19 +22,19 @@ BEGIN
     BEGIN
         BLOCK "040004b0"
         BEGIN
-            VALUE "CompanyName", "Block (based on ReShade by crosire)"
+            VALUE "CompanyName", "Block"
             VALUE "FileVersion", VERSION_STRING_FILE
             VALUE "ProductName", "Block"
             VALUE "ProductVersion", VERSION_STRING_PRODUCT
-            VALUE "LegalCopyright", "Copyright © 2014. All rights reserved."
+            VALUE "LegalCopyright", "Copyright © Block contributors. All rights reserved."
 #ifdef RESHADE_FXC
-            VALUE "FileDescription", "Block FX compiler (ReShade FX)"
+            VALUE "FileDescription", "Block FX compiler"
 #else
     #ifndef _WIN64
-            VALUE "FileDescription", "Block post-processing injector for 32-bit (based on ReShade)"
+            VALUE "FileDescription", "Block post-processing injector for 32-bit"
             VALUE "OriginalFilename", "Block32.dll"
     #else
-            VALUE "FileDescription", "Block post-processing injector for 64-bit (based on ReShade)"
+            VALUE "FileDescription", "Block post-processing injector for 64-bit"
             VALUE "OriginalFilename", "Block64.dll"
     #endif
 #endif

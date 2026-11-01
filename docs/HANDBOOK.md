@@ -1,42 +1,50 @@
-# Block handbook
+# Handbook
 
-Short accompanying document for contributors and curious users.
+Short map of Block for contributors and curious users.
 
-## What Block is
+## What it is
 
-| Path | Artifact | Use |
-|------|----------|-----|
-| OpenGL injector | `opengl32.dll` | Firestorm and other OpenGL Second Life viewers |
-| Vulkan layer | `block.dll` + `Block_x86_64.json` | Vulkan apps (`ENABLE_BLOCK=1`); **not** Aurora-ready |
+| Path | Artifact | Notes |
+|------|----------|-------|
+| OpenGL injector | `opengl32.dll` | Firestorm, Alchemy, Black Dragon, … (Windows) |
+| Vulkan layer | `block.dll` + manifest | Win/Linux via `ENABLE_BLOCK=1`; CI on Linux |
+| Metal (future) | — | macOS rebuild — see [PLATFORMS.md](PLATFORMS.md) |
 
-Overlay (OpenGL): **Shift+B**.
+**Overlay:** `Shift+B` (blocks SL UI input while open)
 
-## Product principles
+## Principles
 
-1. **Honest compatibility** — never market a viewer we have not tested.
-2. **Slow-PC defaults** — `PerformanceMode=1`, `SkipLoadingDisabledEffects=1`, compile cache under `%LOCALAPPDATA%\Block\cache`.
-3. **Safe addons** — OpenGL installs must not load DXGI/DLSS/renodx addons.
-4. **Human authorship** — see [AI_POLICY.md](AI_POLICY.md).
-5. **Credit upstream** — vkShade (Ryan Algar), ReShade FX ecosystem, GShade presets when the user provides them.
+1. **Honest compatibility** — only claim viewers you tested — [VIEWERS.md](VIEWERS.md)  
+2. **GShade look parity** — `__GSHADE__` / `GSHADE_DITHER`; don’t invent depth overrides GShade doesn’t use  
+3. **Safe addons** — no DXGI / DLSS / renodx on OpenGL installs  
+4. **Human authorship** — [AI_POLICY.md](AI_POLICY.md) + PR CI gates  
+5. **Credit upstream** — vkShade, ReShade FX, user GShade packs  
 
 ## Repo map
 
 ```
-src/           Vulkan layer (vkShade-derived)
-third_party/   Vendored ReShade (Block-branded OpenGL injector source)
-tools/         Build, Setup, configure scripts
-payload/       Default ReShade.ini, shaders stub, addons README
-brand/         Logos and marks
-design/        UI / web mockups (reference)
-website/       GitHub Pages one-pager
-docs/          Handbook, AI policy, baseline notes
-profiles/      App profiles
+src/            Vulkan layer (vkShade-derived)
+third_party/    Vendored ReShade (Block-branded OpenGL injector)
+tools/          Build, Setup, configure
+payload/        Default ini / shaders stub / addons README
+brand/          Logos and marks
+design/         UI + web mockups (reference)
+website/        GitHub Pages + latest.json
+docs/           Handbook, AI policy, VIEWERS, PLATFORMS
+profiles/       App profiles
 ```
 
-## Aurora (read this)
+## Updates
 
-Aurora Viewer is Vulkan-native. Forcing `VK_INSTANCE_LAYERS=VK_LAYER_BLOCK_post_processing_64` makes Aurora lose the NVIDIA adapter and fail surface creation. Launch Aurora **without** Block until that is fixed. Firestorm remains the supported SL path.
+`website/latest.json` is the OTA signal. Overlay and Setup fetch it and compare to `BLOCK_VERSION_*` in `third_party/reshade/include/block_version.h` (keep in sync with root `VERSION`).
+
+Tag `vX.Y.Z` → CI refreshes `latest.json` and opens a GitHub Release.
+
+## Also see
+
+- [ARCHITECTURE.md](../ARCHITECTURE.md) — backends
+- [NOTICE.md](../NOTICE.md) — upstream credit
 
 ## Website
 
-Source: [`website/`](../website/). Published via GitHub Pages from the `website` folder on `main`.
+Source lives in [`website/`](../website/). Deployed from `main` via `.github/workflows/pages.yml`.

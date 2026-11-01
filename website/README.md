@@ -1,5 +1,17 @@
 # Block website
 
-Static one-pager for GitHub Pages. Visual form follows `design/web-mockup/` (PDF mockup); facts updated for the shipping product (Shift+B, Firestorm OpenGL, Aurora caveats, AI policy).
+Static site for GitHub Pages: https://ape-squared.github.io/Block/
 
-Published from the `website/` folder on `main` via `.github/workflows/pages.yml`.
+Clean URLs use folders (`/download/`, `/docs/`, …). Old `*.html` paths redirect.
+
+| Path | Purpose |
+|------|---------|
+| `/` | Product landing |
+| `/download/` | Get started — Windows zip / Setup |
+| `/docs/` | Doc index + links into the repo |
+| `/contribute/` | Contributor guide (human-only) |
+| `/ai/` | AI policy |
+| `/latest.json` | OTA channel for Setup + overlay |
+| `styles.css` / `site.js` | Shared look and motion |
+
+Visual form follows `design/web-mockup/`. Deploy: push to `main` (workflow `pages.yml`).

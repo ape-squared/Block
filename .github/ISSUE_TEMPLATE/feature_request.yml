@@ -1,0 +1,40 @@
+name: Feature request
+description: Suggest an improvement for Block
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do that is hard or missing today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What would you like Block to do instead?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - OpenGL / overlay
+        - Vulkan layer
+        - Setup / installer
+        - Docs / website
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: human
+    attributes:
+      label: Authorship
+      options:
+        - label: I understand Block does not accept AI-generated code or docs (docs/AI_POLICY.md)
+          required: true

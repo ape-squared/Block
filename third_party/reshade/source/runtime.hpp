@@ -255,6 +255,8 @@ namespace reshade
 
 		#pragma region Status
 		static unsigned int s_latest_version[3];
+		static char s_update_url[512];
+		static bool s_update_available;
 
 		bool _is_initialized = false;
 		bool _preset_is_incomplete = false;
@@ -474,8 +476,8 @@ namespace reshade
 
 		#pragma region Overlay Settings
 		std::string _selected_language, _current_language;
-		float _font_size = 13.0f;
-		float _editor_font_size = 13.0f;
+		float _font_size = 18.0f; // Match GShade overlay scale (Addons / Home tabs readable)
+		float _editor_font_size = 18.0f;
 		int _style_index = 2;
 		int _editor_style_index = 0;
 		std::filesystem::path _font_path, _default_font_path;

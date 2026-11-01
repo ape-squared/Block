@@ -51,3 +51,6 @@ credentials.json
 
 third_party/reshade/.git.bak-before-monorepo/
 
+
+tools/setup/obj/
+

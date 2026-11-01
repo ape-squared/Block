@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Docs — Block</title>
+  <meta name="description" content="Block documentation: viewers, platforms, handbook, architecture, AI policy.">
+  <link rel="canonical" href="https://ape-squared.github.io/Block/docs/">
+  <link rel="icon" href="/Block/assets/mark.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/Block/styles.css?v=5">
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true"></div>
+
+  <header class="nav" data-nav>
+    <a class="brand" href="/Block/" aria-label="Block home">
+      <img src="/Block/assets/mark.svg" width="28" height="28" alt="">
+      <span>BLOCK</span>
+    </a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" data-nav-toggle>
+      <span class="nav-toggle-bar"></span>
+      <span class="sr-only">Menu</span>
+    </button>
+    <nav id="site-nav" class="nav-links" aria-label="Primary">
+      <a href="/Block/download/">Download</a>
+      <a href="/Block/docs/" class="is-active">Docs</a>
+      <a href="/Block/contribute/">Contribute</a>
+      <a href="/Block/ai/">AI policy</a>
+    </nav>
+    <a class="btn btn-primary nav-cta" href="/Block/download/">Download</a>
+  </header>
+
+  <main class="section page-shell">
+    <header class="page-hero reveal">
+      <p class="eyebrow">documentation</p>
+      <h1>Maps, not mysteries.</h1>
+      <p class="lede">Start here for how Block fits together. Deep detail stays in the GitHub Markdown so it versions with the code.</p>
+    </header>
+
+    <div class="doc-grid reveal" style="--d:1">
+      <a class="doc-link" href="/Block/download/">
+        <strong>Download / get started</strong>
+        <span>Zip, Setup, multi-viewer, Shift+B.</span>
+      </a>
+      <a class="doc-link" href="https://github.com/ape-squared/Block/blob/main/docs/VIEWERS.md">
+        <strong>Viewers</strong>
+        <span>Firestorm, Alchemy, Black Dragon, and friends.</span>
+      </a>
+      <a class="doc-link" href="https://github.com/ape-squared/Block/blob/main/docs/PLATFORMS.md">
+        <strong>Platforms</strong>
+        <span>Windows · Linux Vulkan · macOS Metal soon.</span>
+      </a>
+      <a class="doc-link" href="/Block/contribute/">
+        <strong>Contribute</strong>
+        <span>Ground rules, build, PR + CI authorship gates.</span>
+      </a>
+      <a class="doc-link" href="/Block/ai/">
+        <strong>AI policy</strong>
+        <span>Human craft only — what we reject and accept.</span>
+      </a>
+      <a class="doc-link" href="https://github.com/ape-squared/Block/blob/main/ARCHITECTURE.md">
+        <strong>Architecture</strong>
+        <span>OpenGL injector vs Vulkan layer.</span>
+      </a>
+      <a class="doc-link" href="https://github.com/ape-squared/Block/blob/main/docs/HANDBOOK.md">
+        <strong>Handbook</strong>
+        <span>Repo map and product principles.</span>
+      </a>
+      <a class="doc-link" href="https://github.com/ape-squared/Block/blob/main/NOTICE.md">
+        <strong>Notices</strong>
+        <span>vkShade, ReShade, and brand credit.</span>
+      </a>
+      <a class="doc-link" href="https://github.com/ape-squared/Block/blob/main/SECURITY.md">
+        <strong>Security</strong>
+        <span>How to report a vulnerability.</span>
+      </a>
+      <a class="doc-link" href="/Block/latest.json">
+        <strong>latest.json</strong>
+        <span>OTA channel for Setup and the overlay.</span>
+      </a>
+    </div>
+
+    <div class="prose reveal" style="--d:2">
+      <h2>Backends &amp; platforms</h2>
+      <table>
+        <thead>
+          <tr><th>Path</th><th>Artifact</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>OpenGL (Windows)</td><td><code>opengl32.dll</code> via Setup</td><td>Supported — Firestorm, Alchemy, Black Dragon</td></tr>
+          <tr><td>Vulkan (Win / Linux)</td><td><code>block.dll</code> / layer</td><td>Experimental / builds on Linux CI</td></tr>
+          <tr><td>Metal (macOS)</td><td>Future rebuild</td><td>Coming soon</td></tr>
+        </tbody>
+      </table>
+      <p>Overlay hotkey: <kbd>Shift</kbd>+<kbd>B</kbd>. Licence: BSD-2-Clause.</p>
+
+      <h2>Principles</h2>
+      <ul>
+        <li>Honest compatibility — only claim viewers you tested</li>
+        <li>Slow-PC defaults — performance mode, compile active techniques</li>
+        <li>Safe addons on OpenGL — no DXGI / DLSS / renodx by default</li>
+        <li>Human authorship — <a href="/Block/ai/">AI policy</a> + PR CI gates</li>
+        <li>Credit upstream — vkShade, ReShade FX, user GShade packs</li>
+      </ul>
+
+      <div class="page-actions">
+        <a class="btn btn-primary" href="https://github.com/ape-squared/Block">Browse the repo</a>
+        <a class="btn btn-ghost" href="/Block/">Back to home</a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-brand">
+      <img src="/Block/assets/mark.svg" width="24" height="24" alt="">
+      <p>Docs on the site stay short. Source of truth for long guides is the repository.</p>
+    </div>
+    <nav class="footer-links">
+      <a href="/Block/">Home</a>
+      <a href="/Block/contribute/">Contribute</a>
+      <a href="/Block/ai/">AI policy</a>
+      <a href="https://github.com/ape-squared/Block/blob/main/LICENSE">Licence</a>
+    </nav>
+  </footer>
+
+  <script src="/Block/site.js?v=5" defer></script>
+</body>
+</html>

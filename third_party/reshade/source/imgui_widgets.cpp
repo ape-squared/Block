@@ -1068,38 +1068,26 @@ void reshade::imgui::spinner(float value, float radius, float thickness)
 	if (value < 0.0f)
 		value = ImAbs(ImSin(static_cast<float>(ImGui::GetTime())));
 
-	const ImU32 colors[6 + 1] = {
-		0xFF00FF00,
-		0xFFFFFF00,
-		0xFFFF0000,
-		0xFFFF00FF,
-		0xFF0001FF,
-		0xFF00FFFF,
-		0xFF00FF00
-	};
+	// Block signal lime #D4FF3F — replaces the old ReShade rainbow spinner.
+	constexpr ImU32 lime = IM_COL32(0xD4, 0xFF, 0x3F, 0xFF);
+	constexpr ImU32 lime_dim = IM_COL32(0xD4, 0xFF, 0x3F, 0x55);
+	constexpr ImU32 ink = IM_COL32(0x0B, 0x0C, 0x0E, 0xFF);
 
-	const float epsilon = 0.5f / radius;
-	const float rotation = 0.15f * IM_PI;
+	const float t = static_cast<float>(ImGui::GetTime());
+	const float a0 = t * 4.0f;
+	const float a1 = a0 + IM_PI * (0.55f + 1.2f * ImClamp(value, 0.05f, 1.0f));
 
 	draw_list->PathClear();
+	draw_list->PathArcTo(center, radius, a0, a0 + IM_PI * 2.0f, 48);
+	draw_list->PathStroke(lime_dim, 0, thickness * 0.55f);
 
-	for (int n = 0; n < 6; ++n)
-	{
-		if (n > value * 6)
-			break;
+	draw_list->PathClear();
+	draw_list->PathArcTo(center, radius, a0, a1, 32);
+	draw_list->PathStroke(lime, 0, thickness);
 
-		const float a_min = 2.0f * IM_PI * (n / 6.0f) - rotation - epsilon;
-		const float a_max = 2.0f * IM_PI * ImClamp(value, n / 6.0f, (n + 1) / 6.0f) - rotation + epsilon;
-
-		const int vert_beg_idx = draw_list->VtxBuffer.Size;
-		draw_list->PathArcTo(center, radius, a_min, a_max);
-		draw_list->PathStroke(colors[n], 0, thickness);
-		const int vert_end_idx = draw_list->VtxBuffer.Size;
-
-		const ImVec2 gradient_p0(center.x + ImCos(a_min) * radius, center.y + ImSin(a_min) * radius);
-		const ImVec2 gradient_p1(center.x + ImCos(a_max) * radius, center.y + ImSin(a_max) * radius);
-		ImGui::ShadeVertsLinearColorGradientKeepAlpha(draw_list, vert_beg_idx, vert_end_idx, gradient_p0, gradient_p1, colors[n], colors[n == 2 || n == 5 ? n : n + 1]);
-	}
+	const float s = radius * 0.42f;
+	draw_list->AddRectFilled(center - ImVec2(s, s), center + ImVec2(s, s), lime);
+	draw_list->AddRect(center - ImVec2(s, s), center + ImVec2(s, s), ink, 0.0f, 0, 1.5f);
 
 	ImGui::Dummy(radius_with_padding * 2);
 }

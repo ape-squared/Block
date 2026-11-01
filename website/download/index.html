@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Download — Block</title>
+  <meta name="description" content="Download Block Setup for Windows. Firestorm, Alchemy, Black Dragon, and more. Linux Vulkan from source. macOS Metal coming soon.">
+  <link rel="canonical" href="https://ape-squared.github.io/Block/download/">
+  <link rel="icon" href="/Block/assets/mark.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/Block/styles.css?v=5">
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true"></div>
+
+  <header class="nav" data-nav>
+    <a class="brand" href="/Block/" aria-label="Block home">
+      <img src="/Block/assets/mark.svg" width="28" height="28" alt="">
+      <span>BLOCK</span>
+    </a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" data-nav-toggle>
+      <span class="nav-toggle-bar"></span>
+      <span class="sr-only">Menu</span>
+    </button>
+    <nav id="site-nav" class="nav-links" aria-label="Primary">
+      <a href="/Block/download/" class="is-active">Download</a>
+      <a href="/Block/docs/">Docs</a>
+      <a href="/Block/contribute/">Contribute</a>
+      <a href="/Block/ai/">AI policy</a>
+    </nav>
+    <a class="btn btn-primary nav-cta" href="https://github.com/ape-squared/Block/releases/latest">Releases</a>
+  </header>
+
+  <main class="section page-shell">
+    <header class="page-hero reveal">
+      <p class="eyebrow">get started</p>
+      <h1><span class="brand-word">BLOCK</span> for your viewers.</h1>
+      <p class="lede">Windows zip with Setup for Firestorm, Alchemy, Black Dragon, and other OpenGL Second Life viewers. Linux builds the Vulkan layer from source. Mac Metal is on the way.</p>
+    </header>
+
+    <div class="prose reveal" style="--d:1">
+      <p class="version-chip" data-latest-version>loading version…</p>
+      <div class="page-actions">
+        <a class="btn btn-primary" data-latest-download href="https://github.com/ape-squared/Block/releases/latest">Download Windows zip</a>
+        <a class="btn btn-ghost" href="https://github.com/ape-squared/Block/releases">All releases</a>
+      </div>
+
+      <h2>Install in four steps</h2>
+      <ol class="steps-inline">
+        <li>
+          <strong>Unzip</strong>
+          Extract <code>Block-*-windows-x64.zip</code> anywhere you like.
+        </li>
+        <li>
+          <strong>Run BlockSetup.exe</strong>
+          Windows may warn about an unsigned download — expected for community releases.
+        </li>
+        <li>
+          <strong>Pick your viewers</strong>
+          Check Firestorm, Alchemy, Black Dragon, Cool VL, Singularity, Kokua… or <strong>Browse…</strong> to a portable folder.
+        </li>
+        <li>
+          <strong>Shift+B</strong>
+          Launch each viewer normally. In-world, open the overlay and load a GShade / Heard preset if you have one.
+        </li>
+      </ol>
+
+      <div class="callout">
+        <p>Optional: if GShade is under <code>Program Files\GShade</code>, Setup wires shaders and presets automatically. Without it, you still get the injector and overlay.</p>
+      </div>
+
+      <h2>Supported viewers (Windows OpenGL)</h2>
+      <table>
+        <thead>
+          <tr><th>Viewer</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Firestorm</td><td>Supported</td></tr>
+          <tr><td>Alchemy</td><td>Supported</td></tr>
+          <tr><td>Black Dragon</td><td>Supported</td></tr>
+          <tr><td>Cool VL, Singularity, Kokua, Catznip, …</td><td>Expected (same injector)</td></tr>
+        </tbody>
+      </table>
+      <p>Full matrix: <a href="https://github.com/ape-squared/Block/blob/main/docs/VIEWERS.md">docs/VIEWERS.md</a>.</p>
+
+      <h2>Platforms</h2>
+      <table>
+        <thead>
+          <tr><th>OS</th><th>What you get</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Windows 10/11 x64</strong></td><td>This zip — Setup + OpenGL injector</td></tr>
+          <tr><td><strong>Linux</strong></td><td>Vulkan layer from source (Meson). CI builds it on PRs. Not an SL OpenGL drop-in yet.</td></tr>
+          <tr><td><strong>macOS</strong></td><td>Coming soon — future <strong>Metal</strong> rebuild of Block, not this zip</td></tr>
+        </tbody>
+      </table>
+      <p>Details: <a href="https://github.com/ape-squared/Block/blob/main/docs/PLATFORMS.md">docs/PLATFORMS.md</a>.</p>
+
+      <h2>Requirements (Windows)</h2>
+      <ul>
+        <li>Windows 10 or 11, x64</li>
+        <li>.NET Framework 4.x (included with Windows)</li>
+        <li>An OpenGL Second Life viewer</li>
+      </ul>
+
+      <h2>What is not in the zip</h2>
+      <p>The experimental Vulkan layer and Linux binaries stay out of the Windows Setup package on purpose. Build those from source when you need them.</p>
+
+      <h2>Updates</h2>
+      <p>When a newer version ships, Setup and the overlay can show an update banner that links to GitHub Releases. Channel file: <a href="/Block/latest.json"><code>latest.json</code></a>.</p>
+
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="/Block/docs/">Read the docs</a>
+        <a class="btn btn-ghost" href="https://github.com/ape-squared/Block">Source on GitHub</a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-brand">
+      <img src="/Block/assets/mark.svg" width="24" height="24" alt="">
+      <p>Block is independent. Not affiliated with Linden Lab, Second Life, ReShade, or GShade.</p>
+    </div>
+    <nav class="footer-links">
+      <a href="/Block/">Home</a>
+      <a href="/Block/contribute/">Contribute</a>
+      <a href="/Block/ai/">AI policy</a>
+      <a href="https://github.com/ape-squared/Block/blob/main/LICENSE">Licence</a>
+    </nav>
+  </footer>
+
+  <script src="/Block/site.js?v=5" defer></script>
+</body>
+</html>

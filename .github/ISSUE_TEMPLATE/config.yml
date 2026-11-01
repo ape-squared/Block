@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Website / docs
+    url: https://ape-squared.github.io/block/
+    about: Product site, latest.json, and high-level overview.
+  - name: AI policy
+    url: https://github.com/ape-squared/Block/blob/main/docs/AI_POLICY.md
+    about: We do not accept AI-generated contributions — read this before opening a PR.

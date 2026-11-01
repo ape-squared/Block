@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contribute — Block</title>
+  <meta name="description" content="How to contribute to Block. Human-authored patches only. Build, test, open a focused PR.">
+  <link rel="canonical" href="https://ape-squared.github.io/Block/contribute/">
+  <link rel="icon" href="/Block/assets/mark.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/Block/styles.css?v=5">
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true"></div>
+
+  <header class="nav" data-nav>
+    <a class="brand" href="/Block/" aria-label="Block home">
+      <img src="/Block/assets/mark.svg" width="28" height="28" alt="">
+      <span>BLOCK</span>
+    </a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" data-nav-toggle>
+      <span class="nav-toggle-bar"></span>
+      <span class="sr-only">Menu</span>
+    </button>
+    <nav id="site-nav" class="nav-links" aria-label="Primary">
+      <a href="/Block/download/">Download</a>
+      <a href="/Block/docs/">Docs</a>
+      <a href="/Block/contribute/" class="is-active">Contribute</a>
+      <a href="/Block/ai/">AI policy</a>
+    </nav>
+    <a class="btn btn-primary nav-cta" href="https://github.com/ape-squared/Block/compare">Open a PR</a>
+  </header>
+
+  <main class="section page-shell">
+    <header class="page-hero reveal">
+      <p class="eyebrow">contributing</p>
+      <h1>Open contributions — from humans.</h1>
+      <p class="lede">Block loads into other people’s processes. A bad patch crashes a viewer mid-session. Own the diff, test it, and keep PRs focused.</p>
+      <div class="page-actions">
+        <a class="btn btn-primary" href="/Block/ai/">Read the AI policy</a>
+        <a class="btn btn-ghost" href="https://github.com/ape-squared/Block/blob/main/CONTRIBUTING.md">Full guide on GitHub</a>
+      </div>
+    </header>
+
+    <div class="prose reveal" style="--d:1">
+      <h2>Ground rules</h2>
+      <ol>
+        <li><strong>Human authorship.</strong> No Copilot / ChatGPT / Claude / Cursor Agent / Gemini paste-jobs — disclosed or not. See <a href="/Block/ai/">AI policy</a>.</li>
+        <li><strong>Honest compatibility.</strong> Only claim a viewer you launched with your build.</li>
+        <li><strong>Licence.</strong> Code lands under BSD-2-Clause. Update notices when you vendor upstream.</li>
+        <li><strong>Focused PRs.</strong> One concern when possible. No drive-by dependency dumps.</li>
+        <li><strong>Brand.</strong> Lime signal <code>#D4FF3F</code>, lockups in <code>brand/</code> — do not invent a second look.</li>
+      </ol>
+
+      <h2>Ways to help</h2>
+      <table>
+        <thead>
+          <tr><th>Area</th><th>Examples</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Bugs</td><td>Overlay crash, Setup mis-detect — with log text</td></tr>
+          <tr><td>OpenGL / viewers</td><td>Firestorm, Alchemy, Black Dragon — presets, Shift+B UX</td></tr>
+          <tr><td>Setup</td><td>Viewer discovery, portable browse, OTA copy</td></tr>
+          <tr><td>Vulkan / Linux</td><td>Layer hardening; Meson builds on CI</td></tr>
+          <tr><td>Docs &amp; site</td><td>VIEWERS / PLATFORMS accuracy, Pages content</td></tr>
+          <tr><td>Review</td><td>Say what you built and ran</td></tr>
+        </tbody>
+      </table>
+      <p>Feature ideas: <a href="https://github.com/ape-squared/Block/issues/new/choose">new issue form</a>. Search first.</p>
+
+      <h2>Build (Windows)</h2>
+      <p>Prerequisites: Git, Visual Studio 2022 Build Tools (MSVC) for the OpenGL injector.</p>
+      <pre class="code-block">git clone https://github.com/ape-squared/Block.git
+cd Block
+powershell -ExecutionPolicy Bypass -File tools\build_reshade_block.ps1
+powershell -ExecutionPolicy Bypass -File tools\stage_block_runtime.ps1
+powershell -ExecutionPolicy Bypass -File tools\build_block_setup.ps1
+tools\BlockSetup.exe</pre>
+
+      <h2>Before you open a PR</h2>
+      <ul>
+        <li>Branch from <code>main</code></li>
+        <li>Exercise the path you changed — viewer + <kbd>Shift</kbd>+<kbd>B</kbd> for overlay work</li>
+        <li>Paste log text, not screenshots of screenshots</li>
+        <li>Fill the PR template, including the human-authored checkbox</li>
+        <li>Do not commit <code>build/</code>, <code>build-win/</code>, or viewer logs</li>
+      </ul>
+
+      <h2>What GitHub checks on every PR</h2>
+      <ul>
+        <li><strong>Human authorship gate</strong> — PR body must confirm you wrote the patch (template checklist)</li>
+        <li><strong>AI heuristic scan</strong> — flags common LLM watermarks in added lines</li>
+        <li><strong>Linux Vulkan build</strong> — Meson compile so the layer keeps building</li>
+        <li><strong>Doc path sanity</strong> — required docs and site files still exist</li>
+      </ul>
+
+      <div class="callout">
+        <p>A green CI check does not replace “I ran Shift+B on my viewer.” False-positive AI heuristics: explain in the PR and ask a maintainer.</p>
+      </div>
+
+      <h2>Issues</h2>
+      <p>Use <a href="https://github.com/ape-squared/Block/issues/new/choose">New issue</a> — bug form or feature request. Public attachments are public; strip tokens from logs.</p>
+
+      <div class="page-actions">
+        <a class="btn btn-primary" href="https://github.com/ape-squared/Block">GitHub</a>
+        <a class="btn btn-ghost" href="/Block/docs/">Docs index</a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-brand">
+      <img src="/Block/assets/mark.svg" width="24" height="24" alt="">
+      <p>Be civil. Technical disagreement is fine; harassment is not.</p>
+    </div>
+    <nav class="footer-links">
+      <a href="/Block/">Home</a>
+      <a href="/Block/download/">Download</a>
+      <a href="/Block/ai/">AI policy</a>
+      <a href="https://github.com/ape-squared/Block/blob/main/LICENSE">Licence</a>
+    </nav>
+  </footer>
+
+  <script src="/Block/site.js?v=5" defer></script>
+</body>
+</html>
+

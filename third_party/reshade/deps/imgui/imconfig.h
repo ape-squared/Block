@@ -128,6 +128,10 @@
 
 //---- Debug Tools: Macro to break in Debugger (we provide a default implementation of this in the codebase)
 // (use 'Metrics->Tools->Item Picker' to pick widgets with the mouse and break into them for easy debugging.)
+// Block: never int3 in shipped builds — unhandled IM_DEBUG_BREAK closes the viewer (Shift+B).
+#if defined(NDEBUG)
+#define IM_DEBUG_BREAK() ((void)0)
+#endif
 //#define IM_DEBUG_BREAK  IM_ASSERT(0)
 //#define IM_DEBUG_BREAK  __debugbreak()
 

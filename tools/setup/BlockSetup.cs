@@ -136,7 +136,7 @@ namespace Block.Setup
             side.Controls.Add(_stepNav);
             side.Controls.Add(new Label
             {
-                Text = "v0.1.0 · x64", ForeColor = Brand.InkMuted, Font = new Font("Consolas", 8.5f),
+                Text = "v0.3.0 · x64", ForeColor = Brand.InkMuted, Font = new Font("Consolas", 8.5f),
                 Location = new Point(20, 380), AutoSize = true
             });
             body.Controls.Add(side);
@@ -207,16 +207,16 @@ namespace Block.Setup
             });
             p.Controls.Add(new Label
             {
-                Text = "Post-processing for Second Life viewers. Block injects into the OpenGL viewer you choose, uses your GShade shader pack when present, and opens with Shift+B.",
-                Location = new Point(0, 48), Size = new Size(500, 60), ForeColor = Brand.InkMuted, Font = new Font("Segoe UI", 10f)
+                Text = "Post-processing for Second Life viewers. Block injects into the OpenGL viewer you choose (Firestorm, Alchemy, Black Dragon, and more), uses your GShade pack when present, and opens with Shift+B.",
+                Location = new Point(0, 48), Size = new Size(500, 68), ForeColor = Brand.InkMuted, Font = new Font("Segoe UI", 10f)
             });
-            var card = new Panel { Location = new Point(0, 118), Size = new Size(500, 110), BackColor = Brand.Surface2 };
+            var card = new Panel { Location = new Point(0, 126), Size = new Size(500, 110), BackColor = Brand.Surface2 };
             card.Paint += (s, e) =>
             {
                 e.Graphics.DrawRectangle(new Pen(Brand.Line), 0, 0, card.Width - 1, card.Height - 1);
             };
-            card.Controls.Add(Bullet(10, 14, "GShade presets (extracts Heard.zip → Heard\\)"));
-            card.Controls.Add(Bullet(10, 42, "Local addons only (safe for OpenGL — no DXGI/DLSS seeds)"));
+            card.Controls.Add(Bullet(10, 14, "Firestorm, Alchemy, Black Dragon, Cool VL, Singularity…"));
+            card.Controls.Add(Bullet(10, 42, "GShade / Heard presets + OpenGL-safe addons"));
             card.Controls.Add(Bullet(10, 70, "Overlay hotkey: Shift+B"));
             p.Controls.Add(card);
             var agree = new CheckBox
@@ -250,57 +250,58 @@ namespace Block.Setup
             p.Controls.Add(new Label
             {
                 Text = "Viewers", AutoSize = true, Location = new Point(0, 36),
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = Brand.InkMuted
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), ForeColor = Brand.InkMuted
             });
             list = new ListView
             {
-                Location = new Point(0, 54), Size = new Size(500, 118),
+                Location = new Point(0, 56), Size = new Size(500, 100),
                 View = View.Details, FullRowSelect = true, CheckBoxes = true,
                 BackColor = Brand.Surface2, ForeColor = Brand.Ink, BorderStyle = BorderStyle.FixedSingle,
-                Font = new Font("Segoe UI", 9f), HeaderStyle = ColumnHeaderStyle.None
+                Font = new Font("Segoe UI", 10f), HeaderStyle = ColumnHeaderStyle.None,
+                OwnerDraw = false
             };
-            list.Columns.Add("Name", 140);
-            list.Columns.Add("Path", 270);
+            list.Columns.Add("Name", 150);
+            list.Columns.Add("Path", 260);
             list.Columns.Add("Status", 70);
             p.Controls.Add(list);
 
             p.Controls.Add(new Label
             {
-                Text = "Addons", AutoSize = true, Location = new Point(0, 180),
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = Brand.InkMuted
+                Text = "Addons", AutoSize = true, Location = new Point(0, 164),
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), ForeColor = Brand.InkMuted
             });
             addons = new ListView
             {
-                Location = new Point(0, 198), Size = new Size(500, 100),
+                Location = new Point(0, 184), Size = new Size(500, 118),
                 View = View.Details, FullRowSelect = true, CheckBoxes = true,
                 BackColor = Brand.Surface2, ForeColor = Brand.Ink, BorderStyle = BorderStyle.FixedSingle,
-                Font = new Font("Segoe UI", 9f), HeaderStyle = ColumnHeaderStyle.None
+                Font = new Font("Segoe UI", 10f), HeaderStyle = ColumnHeaderStyle.None
             };
-            addons.Columns.Add("Addon", 220);
-            addons.Columns.Add("Source", 200);
+            addons.Columns.Add("Addon", 240);
+            addons.Columns.Add("Source", 180);
             addons.Columns.Add("Note", 60);
             p.Controls.Add(addons);
 
             addonHint = new Label
             {
-                Location = new Point(0, 302), Size = new Size(500, 28),
-                Font = new Font("Segoe UI", 8.25f), ForeColor = Brand.InkMuted,
-                Text = "Perf defaults on: Performance Mode + compile only active preset. DLSS/renodx blocked for OpenGL."
+                Location = new Point(0, 306), Size = new Size(500, 32),
+                Font = new Font("Segoe UI", 8.5f), ForeColor = Brand.InkMuted,
+                Text = "Check addons to copy into each viewer’s gshade-addons. DLSS / renodx blocked for OpenGL."
             };
             p.Controls.Add(addonHint);
 
             var rescan = MakeBtn("Rescan", false);
-            rescan.Location = new Point(0, 332);
-            rescan.Size = new Size(88, 26);
+            rescan.Location = new Point(0, 338);
+            rescan.Size = new Size(96, 28);
             rescan.Click += (s, e) => { RefreshViewers(); RefreshAddons(); };
             var browse = MakeBtn("Browse…", false);
-            browse.Location = new Point(96, 332);
-            browse.Size = new Size(88, 26);
+            browse.Location = new Point(104, 338);
+            browse.Size = new Size(96, 28);
             browse.Click += Browse_Click;
             status = new Label
             {
-                AutoSize = true, Location = new Point(200, 338),
-                Font = new Font("Consolas", 8.5f), ForeColor = Brand.Ok,
+                AutoSize = true, Location = new Point(212, 344),
+                Font = new Font("Consolas", 9f), ForeColor = Brand.Ok,
                 Text = File.Exists(InjectorDll()) ? "Injector ready" : "Build injector first"
             };
             p.Controls.Add(rescan);
@@ -362,7 +363,7 @@ namespace Block.Setup
             });
             p.Controls.Add(new Label
             {
-                Text = "Firestorm: launch normally, Shift+B. Aurora (Vulkan): use \"Launch Aurora with Block.bat\" in the viewer folder — bare .exe will not load Block. Prefer Preferences › Graphics › allow overlays on.",
+                Text = "OpenGL viewers (Firestorm, Alchemy, Black Dragon, …): launch normally, Shift+B. Aurora (Vulkan): use \"Launch Aurora with Block.bat\" — bare .exe will not load Block.",
                 Location = new Point(0, 128), Size = new Size(500, 90), ForeColor = Brand.InkMuted, Font = new Font("Segoe UI", 10f)
             });
             return p;
@@ -916,17 +917,24 @@ namespace Block.Setup
 
         static List<ViewerInfo> FindViewers()
         {
+            // Folder-name globs under common install roots (OpenGL SL viewers + Aurora Vulkan).
             var patterns = new[]
             {
-                "Firestorm*", "SecondLife*", "Alchemy*", "Cool VL Viewer*",
-                "Black Dragon*", "Singularity*", "Catznip*",
+                "Firestorm*", "SecondLife*", "Second Life*",
+                "Alchemy*", "Black Dragon*", "BlackDragon*",
+                "Cool VL Viewer*", "CoolVL*", "Singularity*", "Catznip*",
+                "Kokua*", "Dolphin*", "Dayturn*", "Niran*",
+                "LL*", "Linden*",
                 "Aurora*", "AuroraViewer*", "Aurora Viewer*"
             };
             var roots = new List<string>();
             var pf = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
             var x86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
             var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var downloads = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            var roaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var downloads = Path.Combine(home ?? "", "Downloads");
+            var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
             if (!string.IsNullOrEmpty(pf)) roots.Add(pf);
             if (!string.IsNullOrEmpty(x86) && !roots.Contains(x86)) roots.Add(x86);
             if (!string.IsNullOrEmpty(local))
@@ -934,15 +942,39 @@ namespace Block.Setup
                 roots.Add(local);
                 roots.Add(Path.Combine(local, "Programs"));
                 roots.Add(Path.Combine(local, "Aurora"));
-            }
-            // Portable / extracted packs (e.g. Aurora-Viewer-v*-windows-x64 under Downloads)
-            if (Directory.Exists(downloads))
-            {
-                roots.Add(downloads);
+                // Alchemy / Firestorm sometimes install under Local\*\viewer
                 try
                 {
-                    foreach (var d in new DirectoryInfo(downloads).GetDirectories("Aurora*"))
+                    foreach (var d in new DirectoryInfo(local).GetDirectories("*Alchemy*"))
                         roots.Add(d.FullName);
+                    foreach (var d in new DirectoryInfo(local).GetDirectories("*Firestorm*"))
+                        roots.Add(d.FullName);
+                    foreach (var d in new DirectoryInfo(local).GetDirectories("*Black*Dragon*"))
+                        roots.Add(d.FullName);
+                }
+                catch { }
+            }
+            if (!string.IsNullOrEmpty(roaming))
+            {
+                try
+                {
+                    foreach (var d in new DirectoryInfo(roaming).GetDirectories("*Alchemy*"))
+                        roots.Add(d.FullName);
+                }
+                catch { }
+            }
+            // Portable / extracted packs under Downloads / Desktop
+            foreach (var portableRoot in new[] { downloads, desktop })
+            {
+                if (!Directory.Exists(portableRoot)) continue;
+                roots.Add(portableRoot);
+                try
+                {
+                    foreach (var pat in new[] { "Aurora*", "Firestorm*", "Alchemy*", "Black*Dragon*", "Cool*", "Singularity*", "Kokua*", "Dolphin*" })
+                    {
+                        foreach (var d in new DirectoryInfo(portableRoot).GetDirectories(pat))
+                            roots.Add(d.FullName);
+                    }
                 }
                 catch { }
             }
@@ -962,30 +994,67 @@ namespace Block.Setup
                         found.Add(new ViewerInfo { Name = d.Name, Path = d.FullName });
                     }
                 }
+                // Root itself may be a portable viewer folder
+                try
+                {
+                    var self = new DirectoryInfo(root);
+                    if (LooksLikeViewerDir(self) && IsKnownViewerName(self.Name) && seen.Add(self.FullName))
+                        found.Add(new ViewerInfo { Name = self.Name, Path = self.FullName });
+                }
+                catch { }
             }
-            return found.OrderBy(v => v.Name).ToList();
+            return found.OrderBy(ViewerSortKey).ThenBy(v => v.Name).ToList();
+        }
+
+        static string ViewerSortKey(ViewerInfo v)
+        {
+            var n = v.Name.ToLowerInvariant();
+            if (n.Contains("firestorm")) return "0";
+            if (n.Contains("alchemy")) return "1";
+            if (n.Contains("black") && n.Contains("dragon")) return "2";
+            if (n.Contains("second")) return "3";
+            if (n.Contains("cool")) return "4";
+            if (n.Contains("singularity")) return "5";
+            if (n.Contains("catznip")) return "6";
+            if (n.Contains("kokua")) return "7";
+            if (n.Contains("aurora")) return "9";
+            return "8";
+        }
+
+        static bool IsKnownViewerName(string name)
+        {
+            var n = (name ?? "").ToLowerInvariant();
+            return n.Contains("firestorm") || n.Contains("secondlife") || n.Contains("second life") ||
+                   n.Contains("alchemy") || n.Contains("black dragon") || n.Contains("blackdragon") ||
+                   n.Contains("cool vl") || n.Contains("coolvl") || n.Contains("singularity") ||
+                   n.Contains("catznip") || n.Contains("kokua") || n.Contains("dolphin") ||
+                   n.Contains("dayturn") || n.Contains("niran") || n.Contains("aurora");
         }
 
         static bool LooksLikeViewerDir(DirectoryInfo d)
         {
-            // Skip cache-only Aurora AppData folders (no viewer binary)
+            // Skip cache-only AppData folders (no viewer binary)
             try
             {
                 foreach (var exe in d.GetFiles("*.exe"))
                 {
                     var n = exe.Name.ToLowerInvariant();
-                    if (n.Contains("plugin") || n.Contains("crash") || n.Contains("updater") || n.Contains("dullahan"))
+                    if (n.Contains("plugin") || n.Contains("crash") || n.Contains("updater") || n.Contains("dullahan") ||
+                        n.Contains("setup") || n.Contains("uninstall") || n.Contains("blocksetup"))
                         continue;
                     if (exe.Length > 2 * 1024 * 1024) return true;
                     if (n.Contains("firestorm") || n.Contains("secondlife") || n.Contains("aurora") ||
                         n.Contains("alchemy") || n.Contains("singularity") || n.Contains("dragon") ||
-                        n.Contains("catznip") || n.Contains("viewer"))
+                        n.Contains("catznip") || n.Contains("kokua") || n.Contains("dolphin") ||
+                        n.Contains("dayturn") || n.Contains("cool") || n.Contains("viewer") ||
+                        n.Contains("slviewer") || n.Contains("llviewer"))
                         return true;
                 }
                 // Program Files installs often keep the exe with the folder name
                 if (d.FullName.IndexOf("Program Files", StringComparison.OrdinalIgnoreCase) >= 0)
                     return d.GetFiles("*.exe").Length > 0 || File.Exists(Path.Combine(d.FullName, "GShade.ini"))
-                        || File.Exists(Path.Combine(d.FullName, "opengl32.dll"));
+                        || File.Exists(Path.Combine(d.FullName, "opengl32.dll"))
+                        || File.Exists(Path.Combine(d.FullName, "ReShade.ini"));
             }
             catch { }
             return false;

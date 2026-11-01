@@ -4,143 +4,161 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Block — build your look, block by block</title>
-  <meta name="description" content="Block is post-processing for Second Life viewers and Vulkan apps on Windows. Open source. Human-made.">
-  <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+  <meta name="description" content="Block is post-processing for Firestorm, Alchemy, Black Dragon, and other Second Life viewers. Windows today, Linux Vulkan layer, macOS Metal coming soon. Human-made.">
+  <link rel="canonical" href="https://ape-squared.github.io/Block/">
+  <link rel="icon" href="/Block/assets/mark.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="/Block/styles.css?v=5">
 </head>
 <body>
-  <header class="nav">
-    <a class="brand" href="#top" aria-label="Block home">
-      <img src="assets/mark.svg" width="28" height="28" alt="">
+  <div class="atmosphere" aria-hidden="true"></div>
+
+  <header class="nav" data-nav>
+    <a class="brand" href="/Block/" aria-label="Block home">
+      <img src="/Block/assets/mark.svg" width="28" height="28" alt="">
       <span>BLOCK</span>
     </a>
-    <nav class="nav-links" aria-label="Primary">
-      <a href="#effects">Effects</a>
-      <a href="#how">How it works</a>
-      <a href="#second-life">Second Life</a>
-      <a href="#roadmap">Roadmap</a>
-      <a href="#faq">FAQ</a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" data-nav-toggle>
+      <span class="nav-toggle-bar"></span>
+      <span class="sr-only">Menu</span>
+    </button>
+    <nav id="site-nav" class="nav-links" aria-label="Primary">
+      <a href="/Block/download/">Download</a>
+      <a href="/Block/docs/">Docs</a>
+      <a href="/Block/contribute/">Contribute</a>
+      <a href="/Block/ai/">AI policy</a>
     </nav>
-    <a class="btn btn-primary" href="https://github.com/ape-squared/block">Get the source</a>
+    <a class="btn btn-primary nav-cta" href="/Block/download/">Get Block</a>
   </header>
 
   <main id="top">
     <section class="hero">
-      <p class="eyebrow">open source · OpenGL viewers + Vulkan layer</p>
-      <div class="hero-grid">
-        <div class="hero-copy">
-          <h1>Build your look,<br>block by block.</h1>
-          <p class="lede">
-            Block is post-processing for Windows — stack colour grading, bloom, sharpening and more,
-            see the cost in milliseconds, and keep control of your frame.
-            Firestorm and other OpenGL Second Life viewers ship today; Vulkan is the long game.
-          </p>
-          <div class="hero-actions">
-            <a class="btn btn-primary" href="https://github.com/ape-squared/block">Get the source</a>
-            <a class="btn btn-ghost" href="#roadmap">See the roadmap</a>
-          </div>
+      <div class="hero-stage">
+        <p class="eyebrow reveal" style="--d:0">open source · Firestorm · Alchemy · Black Dragon</p>
+        <h1 class="reveal" style="--d:1">
+          <span class="brand-line">BLOCK</span>
+          <span class="hero-title">Build your look,<br>block by block.</span>
+        </h1>
+        <p class="lede reveal" style="--d:2">
+          Stack colour grading, bloom, sharpening and more — see the cost in milliseconds.
+          OpenGL viewers on Windows today. Linux Vulkan layer. Mac Metal rebuild next.
+        </p>
+        <div class="hero-actions reveal" style="--d:3">
+          <a class="btn btn-primary" href="/Block/download/">Download for Windows</a>
+          <a class="btn btn-ghost" href="#platforms">Platforms</a>
         </div>
-        <figure class="hero-visual" aria-label="Before and after comparison">
-          <div class="compare">
-            <div class="compare-half raw"><span>raw frame</span></div>
-            <div class="compare-half after"><span>after Block</span></div>
-            <div class="compare-divider" aria-hidden="true"></div>
-          </div>
-        </figure>
       </div>
+    </section>
+
+    <section class="spec-band" aria-label="Highlights">
       <ul class="spec-row">
-        <li><span class="spec-k">SHADERS</span><strong>ReShade FX</strong><span>GShade / ReShade presets on OpenGL viewers; Vulkan inherits vkShade FX support.</span></li>
-        <li><span class="spec-k">APIs</span><strong>OpenGL + Vulkan</strong><span>opengl32 injector for SL viewers; block.dll layer for Vulkan apps.</span></li>
-        <li><span class="spec-k">COST</span><strong>per-effect ms</strong><span>Real timings for what you turn on — not a vibe check.</span></li>
-        <li><span class="spec-k">PLATFORM</span><strong>Windows first</strong><span>Windows 10/11 x64. Human-written code welcome.</span></li>
+        <li class="reveal"><span class="spec-k">SHADERS</span><strong>ReShade FX</strong><span>GShade / ReShade presets; Vulkan inherits vkShade FX.</span></li>
+        <li class="reveal"><span class="spec-k">APIs</span><strong>OpenGL + Vulkan</strong><span>Injector for SL viewers; layer for Vulkan apps.</span></li>
+        <li class="reveal"><span class="spec-k">COST</span><strong>per-effect ms</strong><span>Real timings — not a vibe check.</span></li>
+        <li class="reveal"><span class="spec-k">PLATFORM</span><strong>Win · Linux · Mac soon</strong><span>Setup on Windows; Vulkan on Linux; Metal planned.</span></li>
       </ul>
     </section>
 
     <section id="effects" class="section">
-      <div class="section-head">
+      <div class="section-head reveal">
         <h2>Every effect is a block.</h2>
         <p>Stack effects. Reorder them. Toggle live. Read the bill in milliseconds.</p>
       </div>
-      <div class="stack-panel" role="img" aria-label="Example effect stack">
-        <div class="stack-row"><span class="dot on"></span><span>Tonemap</span><span class="ms">0.10 ms</span></div>
-        <div class="stack-row"><span class="dot on"></span><span>Color Correction</span><span class="ms">0.08 ms</span></div>
-        <div class="stack-row active"><span class="dot on"></span><span>Bloom</span><span class="ms">0.41 ms</span></div>
-        <div class="stack-row"><span class="dot on"></span><span>Sharpen</span><span class="ms">0.18 ms</span></div>
-        <div class="stack-row"><span class="dot on"></span><span>Vignette</span><span class="ms">0.03 ms</span></div>
-        <div class="stack-total"><span>Total</span><span class="ms">0.80 ms</span></div>
-      </div>
-      <div class="feature-grid">
-        <article><h3>Bring ReShade FX shaders</h3><p>OpenGL path uses your GShade / ReShade packs. Vulkan path inherits vkShade’s FX support.</p></article>
-        <article><h3>Hot reload, real errors</h3><p>When a shader fails, you get file, line, and message — not a silent black frame.</p></article>
-        <article><h3>Presets you can share</h3><p>Plain ini files. Copy a folder. No opaque cloud sync.</p></article>
-        <article><h3>A profiler, not a guess</h3><p>Per-effect cost so you know what you are paying for.</p></article>
-        <article><h3>Clean screenshots</h3><p>Capture the final frame without chrome in the way.</p></article>
-        <article><h3>One key overlay</h3><p>Firestorm / OpenGL: <kbd>Shift</kbd>+<kbd>B</kbd>. Vulkan layer: configurable (default Shift+B).</p></article>
+      <div class="effects-layout">
+        <div class="stack-panel reveal" role="list" aria-label="Example effect stack" data-stack>
+          <div class="stack-row" role="listitem" style="--i:0"><span class="dot on"></span><span>Tonemap</span><span class="ms" data-ms="0.10">0.10 ms</span></div>
+          <div class="stack-row" role="listitem" style="--i:1"><span class="dot on"></span><span>Color Correction</span><span class="ms" data-ms="0.08">0.08 ms</span></div>
+          <div class="stack-row active" role="listitem" style="--i:2"><span class="dot on"></span><span>Bloom</span><span class="ms" data-ms="0.41">0.41 ms</span></div>
+          <div class="stack-row" role="listitem" style="--i:3"><span class="dot on"></span><span>Sharpen</span><span class="ms" data-ms="0.18">0.18 ms</span></div>
+          <div class="stack-row" role="listitem" style="--i:4"><span class="dot on"></span><span>Vignette</span><span class="ms" data-ms="0.03">0.03 ms</span></div>
+          <div class="stack-total"><span>Total</span><span class="ms">0.80 ms</span></div>
+        </div>
+        <div class="feature-grid">
+          <article class="reveal"><h3>Bring ReShade FX shaders</h3><p>OpenGL path uses your GShade / ReShade packs. Vulkan path inherits vkShade’s FX support.</p></article>
+          <article class="reveal"><h3>Hot reload, real errors</h3><p>When a shader fails, you get file, line, and message — not a silent black frame.</p></article>
+          <article class="reveal"><h3>Presets you can share</h3><p>Plain ini files. Copy a folder. No opaque cloud sync.</p></article>
+          <article class="reveal"><h3>A profiler, not a guess</h3><p>Per-effect cost so you know what you are paying for.</p></article>
+          <article class="reveal"><h3>Clean screenshots</h3><p>Capture the final frame without chrome in the way.</p></article>
+          <article class="reveal"><h3>One key overlay</h3><p>OpenGL: <kbd>Shift</kbd>+<kbd>B</kbd>. Updates from GitHub when a release ships.</p></article>
+        </div>
       </div>
     </section>
 
     <section id="how" class="section">
-      <div class="section-head">
+      <div class="section-head reveal">
         <h2>Three blocks to a better frame.</h2>
       </div>
       <ol class="steps">
-        <li>
+        <li class="reveal" style="--i:0">
           <span class="step-n">01</span>
           <h3>Install Block</h3>
-          <p>Run Block Setup, pick your viewer. Slow-PC defaults keep first compile to the active preset.</p>
+          <p>Download the Windows zip, run Block Setup, pick your viewer. Slow-PC defaults keep first compile to the active preset.</p>
         </li>
-        <li>
+        <li class="reveal" style="--i:1">
           <span class="step-n">02</span>
-          <h3>Choose a viewer</h3>
-          <p>Firestorm and friends use the OpenGL injector. Aurora is Vulkan-native — layer support is not ready yet.</p>
+          <h3>Choose your viewers</h3>
+          <p>Setup finds Firestorm, Alchemy, Black Dragon, Cool VL, Singularity, Kokua, and more. Check every install you use.</p>
         </li>
-        <li>
+        <li class="reveal" style="--i:2">
           <span class="step-n">03</span>
           <h3>Press Shift+B</h3>
           <p>Open the overlay, switch on a Heard / GShade preset, fine-tune while you play.</p>
         </li>
       </ol>
+      <p class="reveal"><a href="/Block/download/">Full download instructions →</a></p>
     </section>
 
     <section id="second-life" class="section split">
-      <div>
+      <div class="reveal">
         <h2>Made for Second Life.<br>Honest about it.</h2>
         <p>
-          Most Second Life viewers render with <strong>OpenGL</strong>. Block’s OpenGL injector is the path that works today
-          (Firestorm tested). Aurora Viewer is <strong>Vulkan</strong>; forcing Block’s Vulkan layer currently breaks Aurora’s GPU init —
-          we will not claim it works until it does.
+          Most Second Life viewers render with <strong>OpenGL</strong>. That is Block’s supported path on Windows —
+          Firestorm, Alchemy, and Black Dragon supported; more expected via the same injector.
+          We only promote a viewer once Setup + Shift+B have been exercised.
         </p>
       </div>
-      <ul class="status-list">
-        <li><span>Firestorm (OpenGL)</span><span class="tag tag-now">works</span></li>
+      <ul class="status-list reveal">
+        <li><span>Firestorm</span><span class="tag tag-now">supported</span></li>
+        <li><span>Alchemy</span><span class="tag tag-now">supported</span></li>
+        <li><span>Black Dragon</span><span class="tag tag-now">supported</span></li>
+        <li><span>Cool VL · Singularity · Kokua…</span><span class="tag tag-dev">expected</span></li>
         <li><span>GShade / Heard presets</span><span class="tag tag-now">works</span></li>
-        <li><span>Vulkan apps (vkcube)</span><span class="tag tag-dev">in development</span></li>
-        <li><span>Aurora Viewer (Vulkan)</span><span class="tag">blocked</span></li>
-        <li><span>Viewer-specific profiles</span><span class="tag">planned</span></li>
+        <li><span>Update banner</span><span class="tag tag-now">Shift+B</span></li>
       </ul>
-      <p class="footnote">We’ll only say Block works with a viewer once we’ve tested it.</p>
+      <p class="footnote reveal">Full matrix: <a href="https://github.com/ape-squared/Block/blob/main/docs/VIEWERS.md">docs/VIEWERS.md</a>.</p>
+    </section>
+
+    <section id="platforms" class="section">
+      <div class="section-head reveal">
+        <h2>Windows today. Linux layer. Mac Metal next.</h2>
+        <p>One product idea — three platform stories. No vapourware about what ships in the zip.</p>
+      </div>
+      <div class="roadmap">
+        <article class="reveal"><span class="tag tag-now">NOW</span><h3>Windows</h3><p>Block Setup + OpenGL injector. Firestorm, Alchemy, Black Dragon, and friends. Download the release zip.</p></article>
+        <article class="reveal"><span class="tag tag-now">NOW</span><h3>Linux</h3><p>Vulkan post-processing layer builds with Meson. CI compiles it on every PR. OpenGL SL inject is a different loader story — not in Setup yet.</p></article>
+        <article class="reveal"><span class="tag tag-dev">SOON</span><h3>macOS · Metal</h3><p>Apple is not a Vulkan-first world. A future Mac Block is a <strong>Metal rebuild</strong> — native bridge, signing, packaging — not Wine of the Windows zip.</p></article>
+      </div>
+      <p class="reveal" style="margin-top:1.25rem"><a href="https://github.com/ape-squared/Block/blob/main/docs/PLATFORMS.md">Platform notes on GitHub →</a></p>
     </section>
 
     <section id="roadmap" class="section">
-      <div class="section-head">
+      <div class="section-head reveal">
         <h2>The roadmap, block by block.</h2>
       </div>
       <div class="roadmap">
-        <article><span class="tag tag-now">NOW</span><h3>OpenGL Block for SL</h3><p>Injector, Setup wizard, Heard presets, slow-PC defaults, addon picker.</p></article>
-        <article><span class="tag tag-now">NOW</span><h3>Brand + overlay</h3><p>Lime Block UI, Shift+B, Addons tab, performance mode defaults.</p></article>
-        <article><span class="tag tag-dev">NEXT</span><h3>Vulkan layer hardening</h3><p>Release CRT, Aurora-safe init, honest profiles for Vulkan apps.</p></article>
-        <article><span class="tag">LATER</span><h3>Presets + UI depth</h3><p>More of the design mockups shipped in-product.</p></article>
-        <article><span class="tag">LATER</span><h3>App profiles</h3><p>Second Life, generic Vulkan, custom.</p></article>
-        <article><span class="tag">LATER</span><h3>Aurora path</h3><p>Only when the layer no longer kills NVIDIA enumeration.</p></article>
-        <article><span class="tag">LATER</span><h3>Profiler + polish</h3><p>Per-effect timing everywhere, packaging, installers.</p></article>
+        <article class="reveal"><span class="tag tag-now">NOW</span><h3>Multi-viewer Setup</h3><p>Firestorm, Alchemy, Black Dragon, Cool VL, Singularity, Kokua, and portable browse.</p></article>
+        <article class="reveal"><span class="tag tag-now">NOW</span><h3>Brand + overlay</h3><p>Lime Block UI, Shift+B, Addons tab, performance mode defaults.</p></article>
+        <article class="reveal"><span class="tag tag-now">NOW</span><h3>PR authorship gates</h3><p>CI checks human confirmation + AI watermark heuristics before merge.</p></article>
+        <article class="reveal"><span class="tag tag-dev">NEXT</span><h3>Linux Vulkan polish</h3><p>Packaged layer artifacts, clearer docs for ENABLE_BLOCK.</p></article>
+        <article class="reveal"><span class="tag">LATER</span><h3>macOS Metal Block</h3><p>Rebuilt renderer path — not a thin OpenGL port.</p></article>
+        <article class="reveal"><span class="tag">LATER</span><h3>Presets + UI depth</h3><p>More of the design mockups shipped in-product.</p></article>
       </div>
     </section>
 
     <section class="section split credit">
-      <div>
+      <div class="reveal">
         <h2>Standing on good blocks.</h2>
         <p>
           Block incorporates and evolves <a href="https://github.com/ralgar/vkShade">vkShade</a> by Ryan Algar
@@ -148,52 +166,56 @@
           Credit where it is due — including the ReShade FX ecosystem.
         </p>
       </div>
-      <dl class="meta">
+      <dl class="meta reveal">
         <div><dt>upstream</dt><dd>vkShade + ReShade</dd></div>
         <div><dt>licence</dt><dd>BSD-2-Clause</dd></div>
         <div><dt>shaders</dt><dd>ReShade FX</dd></div>
-        <div><dt>source</dt><dd><a href="https://github.com/ape-squared/block">GitHub</a></dd></div>
-        <div><dt>humans</dt><dd><a href="https://github.com/ape-squared/block/blob/main/docs/AI_POLICY.md">No AI code</a></dd></div>
+        <div><dt>source</dt><dd><a href="https://github.com/ape-squared/Block">GitHub</a></dd></div>
+        <div><dt>humans</dt><dd><a href="/Block/ai/">No AI code</a></dd></div>
       </dl>
     </section>
 
     <section id="faq" class="section">
-      <div class="section-head"><h2>Questions.</h2></div>
-      <div class="faq-grid">
-        <article>
-          <h3>Can I use Block today?</h3>
-          <p>Yes on Firestorm (OpenGL). Clone the repo, build the injector, run Block Setup. Vulkan apps: experimental.</p>
-        </article>
-        <article>
-          <h3>Does it work with Firestorm?</h3>
-          <p>Yes — that is the primary path. Overlay: Shift+B.</p>
-        </article>
-        <article>
-          <h3>Does it work with Aurora?</h3>
-          <p>Not yet. Aurora is Vulkan-native; Block’s layer breaks its GPU init. Use Firestorm for Block, or Aurora without Block.</p>
-        </article>
-        <article>
-          <h3>Do my ReShade / GShade shaders work?</h3>
-          <p>On OpenGL viewers, yes — point at your GShade shader pack and Heard presets. Avoid DXGI/DLSS addons.</p>
-        </article>
-        <article>
-          <h3>How much does it cost?</h3>
-          <p>Free and open source (BSD-2-Clause). Contributions welcome — from humans.</p>
-        </article>
-        <article>
-          <h3>Can I send AI-generated patches?</h3>
-          <p>No. Read <a href="https://github.com/ape-squared/block/blob/main/docs/AI_POLICY.md">AI_POLICY.md</a>. We do not accept machine-authored code or docs.</p>
-        </article>
+      <div class="section-head reveal"><h2>Questions.</h2></div>
+      <div class="faq-list" data-faq>
+        <details class="faq-item reveal">
+          <summary>Can I use Block today?</summary>
+          <p>Yes on Windows with Firestorm, Alchemy, Black Dragon, and other OpenGL SL viewers. <a href="/Block/download/">Download the zip</a>, run Setup, press Shift+B.</p>
+        </details>
+        <details class="faq-item reveal">
+          <summary>Alchemy / Black Dragon / Cool VL?</summary>
+          <p>Yes — Setup detects them. Supported: Firestorm, Alchemy, Black Dragon. Others expected via the same OpenGL drop-in. See <a href="https://github.com/ape-squared/Block/blob/main/docs/VIEWERS.md">VIEWERS.md</a>.</p>
+        </details>
+        <details class="faq-item reveal">
+          <summary>Does Linux work?</summary>
+          <p>The <strong>Vulkan layer</strong> builds on Linux (Meson). Second Life OpenGL inject is not the Windows Setup story yet. Details in <a href="https://github.com/ape-squared/Block/blob/main/docs/PLATFORMS.md">PLATFORMS.md</a>.</p>
+        </details>
+        <details class="faq-item reveal">
+          <summary>What about Mac?</summary>
+          <p>Coming soon. A future Block for macOS will use <strong>Metal</strong> — a rebuilt graphics path — not the Windows <code>opengl32.dll</code> zip under Wine.</p>
+        </details>
+        <details class="faq-item reveal">
+          <summary>Do my ReShade / GShade shaders work?</summary>
+          <p>On OpenGL viewers, yes — Setup wires GShade when present. Avoid DXGI/DLSS addons.</p>
+        </details>
+        <details class="faq-item reveal">
+          <summary>How do updates work?</summary>
+          <p>New GitHub Releases refresh <code>latest.json</code>. Shift+B and Setup can show “new update available.”</p>
+        </details>
+        <details class="faq-item reveal">
+          <summary>Can I send AI-generated patches?</summary>
+          <p>No. Read the <a href="/Block/ai/">AI policy</a>. PRs also run automated authorship checks on GitHub.</p>
+        </details>
       </div>
     </section>
 
     <section class="cta">
-      <div class="cta-inner">
+      <div class="cta-inner reveal">
         <h2>Be first to stack a block.</h2>
-        <p>Star and watch the repo for builds. Open issues and PRs — written by people.</p>
+        <p>Download for Windows, or star the repo. Open issues and PRs — written by people.</p>
         <div class="cta-actions">
-          <a class="btn btn-dark" href="https://github.com/ape-squared/block">GitHub</a>
-          <a class="btn btn-dark-ghost" href="https://github.com/ape-squared/block/blob/main/CONTRIBUTING.md">Contribute</a>
+          <a class="btn btn-dark" href="/Block/download/">Download</a>
+          <a class="btn btn-dark-ghost" href="/Block/contribute/">Contribute</a>
         </div>
       </div>
     </section>
@@ -201,15 +223,19 @@
 
   <footer class="footer">
     <div class="footer-brand">
-      <img src="assets/mark.svg" width="24" height="24" alt="">
+      <img src="/Block/assets/mark.svg" width="24" height="24" alt="">
       <p>Block is an independent project. Not affiliated with Linden Lab, Second Life, ReShade, or GShade. Based in part on vkShade (BSD-2-Clause).</p>
     </div>
     <nav class="footer-links">
-      <a href="https://github.com/ape-squared/block">GitHub</a>
-      <a href="https://github.com/ape-squared/block/blob/main/LICENSE">Licence</a>
-      <a href="https://github.com/ape-squared/block/blob/main/docs/AI_POLICY.md">AI policy</a>
-      <a href="https://github.com/ape-squared/block/blob/main/CONTRIBUTING.md">Contribute</a>
+      <a href="/Block/download/">Download</a>
+      <a href="/Block/docs/">Docs</a>
+      <a href="/Block/contribute/">Contribute</a>
+      <a href="/Block/ai/">AI policy</a>
+      <a href="https://github.com/ape-squared/Block">GitHub</a>
+      <a href="https://github.com/ape-squared/Block/blob/main/LICENSE">Licence</a>
     </nav>
   </footer>
+
+  <script src="/Block/site.js?v=5" defer></script>
 </body>
 </html>
