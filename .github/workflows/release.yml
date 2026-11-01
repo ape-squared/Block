@@ -74,7 +74,7 @@ jobs:
 
             **Linux:** Vulkan post-processing layer builds with Meson (see `docs/PLATFORMS.md`). Not an OpenGL SL injector yet.
 
-            **macOS:** coming soon — future Metal rebuild of Block (not this zip).
+            **macOS:** not supported yet — a future Metal rebuild (not this zip).
 
             OTA channel: https://ape-squared.github.io/Block/latest.json
 

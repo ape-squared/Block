@@ -5,13 +5,13 @@
 # Block
 
 **Build your look, block by block.**  
-Post-processing for Second Life viewers (OpenGL) on Windows, Vulkan on Windows/Linux — open source, human-made. macOS Metal coming soon.
+Post-processing for Second Life viewers (OpenGL) on Windows, plus an experimental Vulkan layer on Windows/Linux — open source, human-made.
 
 [![Website](https://img.shields.io/badge/website-ape--squared.github.io%2FBlock-D4FF3F?labelColor=0B0C0E&color=D4FF3F)](https://ape-squared.github.io/Block/)
-[![Release](https://img.shields.io/badge/release-v0.3.0-5BE3E8?labelColor=0B0C0E)](https://github.com/ape-squared/Block/releases/tag/v0.3.0)
+[![Release](https://img.shields.io/github/v/release/ape-squared/Block?label=release&labelColor=0B0C0E&color=5BE3E8)](https://github.com/ape-squared/Block/releases/latest)
 [![License: BSD-2-Clause](https://img.shields.io/badge/license-BSD--2--Clause-4F46E5?labelColor=0B0C0E)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20·%20Linux-070B1F?labelColor=0B0C0E)](#using-block)
-[![CI](https://img.shields.io/badge/CI-PR%20checks-070B1F?labelColor=0B0C0E)](https://github.com/ape-squared/Block/actions/workflows/pr-checks.yml)
+[![CI](https://github.com/ape-squared/Block/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/ape-squared/Block/actions/workflows/pr-checks.yml)
 
 > This software is not provided, endorsed, or supported by Linden Lab, the makers of Second Life.  
 > Not affiliated with ReShade or GShade.
@@ -23,7 +23,7 @@ Post-processing for Second Life viewers (OpenGL) on Windows, Vulkan on Windows/L
 **Stack colour grading, bloom, sharpening and more — and see the cost in milliseconds.**  
 **Firestorm, Alchemy, Black Dragon, and other OpenGL SL viewers on Windows today.**
 
-> **Status:** early (0.x). OpenGL Setup path is supported on Firestorm, Alchemy, and Black Dragon. Linux builds the Vulkan layer (Meson). macOS = future Metal rebuild. See [docs/VIEWERS.md](docs/VIEWERS.md) and [docs/PLATFORMS.md](docs/PLATFORMS.md).
+> **Status:** early (0.x). Current release is **[v0.3.2](https://github.com/ape-squared/Block/releases/tag/v0.3.2)**. OpenGL Setup path is supported on Firestorm, Alchemy, and Black Dragon. Linux builds the Vulkan layer (Meson). See [docs/VIEWERS.md](docs/VIEWERS.md) and [docs/PLATFORMS.md](docs/PLATFORMS.md).
 
 > **Human craft only.** We do not accept AI-generated contributions. PRs run authorship checks. Read [docs/AI_POLICY.md](docs/AI_POLICY.md).
 
@@ -32,9 +32,10 @@ Post-processing for Second Life viewers (OpenGL) on Windows, Vulkan on Windows/L
 | | |
 |---|---|
 | **OpenGL first** | Injector for Firestorm, Alchemy, Black Dragon, and friends |
-| **GShade look parity** | `__GSHADE__` / `GSHADE_DITHER` macros so Heard presets match GShade |
-| **Honest cost** | Per-effect timings so you know what you are paying for |
-| **Your shader packs** | GShade / ReShade FX presets; Heard and friends via Setup |
+| **GShade look parity** | `__GSHADE__` / `GSHADE_DITHER`, DEPTH / DEPTH_II, Intermediate cache when present |
+| **Honest cost** | FX ms on OSD + one-click Trim heavy |
+| **Depth that sticks** | Persist manual buffer picks; Depth OK strip; Generic Depth II for KeepUI |
+| **Faster preset UX** | Favorites / recent, pin effects, pause FX when unfocused |
 | **Safe addons** | OpenGL installs skip DXGI / DLSS / renodx; pick what you load |
 | **One key overlay** | `Shift`+`B` — input blocked from the SL UI while open |
 
@@ -44,7 +45,7 @@ Post-processing for Second Life viewers (OpenGL) on Windows, Vulkan on Windows/L
 |---------|----------|--------|
 | **OpenGL (Windows)** | `opengl32.dll` via Block Setup | Supported — Firestorm, Alchemy, Black Dragon |
 | **Vulkan (Win / Linux)** | `block.dll` / Meson layer | Experimental / CI builds on Linux |
-| **Metal (macOS)** | Future rebuild | Coming soon — not this zip |
+| **Metal (macOS)** | — | Planned (native Metal rebuild; not this zip) |
 
 **Overlay:** `Shift`+`B` · **Version:** [`VERSION`](VERSION) · **Licence:** [BSD-2-Clause](LICENSE)
 
@@ -53,7 +54,8 @@ Post-processing for Second Life viewers (OpenGL) on Windows, Vulkan on Windows/L
 - Block Setup finds Firestorm, Alchemy, Black Dragon, Cool VL, Singularity, Kokua, …  
 - Wires GShade shaders / Heard presets when present  
 - Overlay blocks clicks from falling through into Second Life  
-- Addon picker that stays OpenGL-safe  
+- Addon picker that stays OpenGL-safe (catalog under `%LOCALAPPDATA%\Block\addons-catalog`)  
+- Crash dumps + next-launch prompt with a prefilled GitHub issue draft  
 - Update check against GitHub Pages `latest.json`
 
 ### Vulkan (experimental) · Linux
@@ -62,18 +64,18 @@ Post-processing for Second Life viewers (OpenGL) on Windows, Vulkan on Windows/L
 - Linux: build with Meson (see [docs/PLATFORMS.md](docs/PLATFORMS.md)); CI compiles on every PR  
 - Derived from [vkShade](https://github.com/ralgar/vkShade) — see [NOTICE.md](NOTICE.md)
 
-### macOS — coming soon
+### macOS
 
-A future Mac Block is a **Metal** rebuild (native bridge + packaging), not Wine of the Windows zip.
+Not supported yet. A future Mac Block would be a **Metal** rebuild (native bridge + packaging), not Wine of the Windows zip.
 
 ## Using Block
 
-1. Get a release or build from source ([Build](#build)).  
+1. Download the latest [Windows release zip](https://github.com/ape-squared/Block/releases/latest) or build from source ([Build](#build)).  
 2. Run **Block Setup** and check every OpenGL viewer you use.  
 3. Launch the viewer. In-world, press **`Shift`+`B`**.  
 4. Browse presets (e.g. `gshade-presets\Heard\`) and toggle techniques.
 
-Logs: `ReShade.log` next to the viewer (OpenGL). Prefer pasting log text in issues — not screenshots of screenshots.
+Logs: `ReShade.log` next to the viewer (OpenGL), or a custom path from Settings. Prefer pasting log text in issues — not screenshots of screenshots.
 
 ## Build
 

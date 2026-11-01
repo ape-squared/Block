@@ -25,17 +25,17 @@ meson compile -C build-linux
 # Stage / set VK_LAYER_PATH to the built layer (see README Vulkan section)
 ```
 
-## macOS — coming soon (Metal)
+## macOS (planned — Metal)
 
 Apple does not expose Vulkan as a first-class public API the way Windows and Linux do. A future **Mac build of Block** will not be a thin port of the Windows OpenGL injector.
 
-**How Mac will work (planned):**
+**How Mac would work:**
 
 1. **Metal backend** — Block rebuilt against Metal (and/or a Metal-facing graphics path), not `opengl32.dll`.  
 2. **New packaging** — macOS app / dylib layout, code signing, and viewer install rules specific to Apple platforms.  
 3. **Same product ideas** — FX stack, presets, honest timing — on a Mac-native renderer bridge.
 
-Until that ships, macOS is **not supported**. Star / watch the repo for announcements; do not expect the Windows zip to run under Wine as a supported configuration.
+Until that ships, macOS is **not supported**. Do not expect the Windows zip to run under Wine as a supported configuration.
 
 ## Summary
 
